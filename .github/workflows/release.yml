@@ -36,6 +36,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /Users/laurens/Documents/projects/matrix-drug-list/merge_all_lists/drugList.tsv # Replace with the path to your file
+          asset_path: merge_all_lists/drugList.tsv # Replace with the path to your file
           asset_name: drugList.tsv            # Replace with the name you want for the uploaded asset
           asset_content_type: application/octet-stream
