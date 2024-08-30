@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*' # Triggers the workflow on version tags (e.g., v1.0.0)
 
+permissions:
+  contents: write
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
