@@ -3,23 +3,22 @@ This is a boilerplate pipeline 'generate_orange_book_list'
 generated using Kedro 0.19.8
 """
 import pandas as pd
+pd.options.mode.chained_assignment = None  #default='warn'
+import numpy as np
+import difflib as dl
+import psycopg2 as pg
+import re
+import requests
+from io import StringIO
 
 def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame) -> pd.DataFrame:
-    import pandas as pd
-    pd.options.mode.chained_assignment = None  #default='warn'
-    import numpy as np
-    import difflib as dl
-    import psycopg2 as pg
-    import re
-    import requests
-    from io import StringIO
+
 
     def preferRXCUI(curieList, labelList):
         for idx, item in enumerate(curieList):
             if "RXCUI" in item:
                 return item, labelList[idx]
-        return curieList[0], labelList[0]
-                
+        return curieList[0], labelList[0]           
 
     def getCurie(name):
         itemRequest = 'https://name-resolution-sri.renci.org/lookup?string=' + name + '&autocomplete=false&offset=0&limit=10&biolink_type=ChemicalOrDrugOrTreatment'
@@ -142,15 +141,14 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             return newString
         return ingredientString
             
-    orangebook = pd.read_csv("products.txt", delimiter="~")
-    #orangebook.to_excel("orangebooklist.xlsx")
-    splitExclusions = set(list(pd.read_excel("fda_ob_split_exclusions.xlsx")['name']))
-    obCombinationTherapies, obSingleTherapies = getCombinationTherapiesAndSingleTherapiesLists(orangebook, splitExclusions)
+    splitExclusions = set(list(split_exclusions['name']))
+    obCombinationTherapies, obSingleTherapies = getCombinationTherapiesAndSingleTherapiesLists(rawdata, splitExclusions)
     print(len(set(obCombinationTherapies)), " combination therapeutics.")
     print(len(set(obSingleTherapies)), " single-ingredient therapeutics.")
     obSingleSet = set(obSingleTherapies)
     print("splitting combination therapies (currently ", len(obSingleSet), " items in list)")
-    exclusions = pd.read_excel('fda_exclusions.xlsx')['name']
+    
+    exclusions_names = exclusions['name']
     Approved_USA = []
     combination_therapy = []
     therapyName = []
@@ -160,8 +158,7 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
     curie_label = []
     ingredient_curies = []
 
-
-    drugList = list(set(obCombinationTherapies + obSingleTherapies).difference(exclusions))
+    drugList = list(set(obCombinationTherapies + obSingleTherapies).difference(exclusions_names))
 
     labelDict = {}
     idDict = {}
@@ -224,7 +221,6 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
 
     print(len(obSingleTherapies), "single-component therapies after splitting")
     print(len(obSingleTherapies + obCombinationTherapies), " total therapies after splitting")
-
     print(len(therapyName), " therapies after exclusions")
 
     data = pd.DataFrame({'single_ID':curie_ID, 
