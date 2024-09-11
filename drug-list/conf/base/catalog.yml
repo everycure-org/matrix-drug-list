@@ -1,0 +1,17 @@
+orange-book-products:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/products.txt
+  load_args:
+    sep: '~'
+
+fda_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_exclusions.xlsx
+
+fda_ob_split_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_ob_split_exclusions.xlsx
+
+orange_book_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_ob_list.xlsx
