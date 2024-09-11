@@ -13,7 +13,6 @@ from io import StringIO
 
 def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame) -> pd.DataFrame:
 
-
     def preferRXCUI(curieList, labelList):
         for idx, item in enumerate(curieList):
             if "RXCUI" in item:
@@ -169,7 +168,7 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             name_in_orange_book.append(item)#1
             Approved_USA.append("True")#2
             combination_therapy.append("True")#3
-            available_USA.append(getMostPermissiveStatus(getAllStatuses(orangebook,item)))#4
+            available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#4
             print("item",index, ":", item)
         
             newIngList = []
@@ -207,12 +206,12 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             
         elif originalItem in obSingleTherapies:
             item = removeCationsAnionsAndBasicTerms(item)
-            itemStatuses = getAllStatuses(orangebook,originalItem)
+            itemStatuses = getAllStatuses(rawdata,originalItem)
             name_in_orange_book.append(originalItem)
             therapyName.append(item)
             Approved_USA.append("True")
             combination_therapy.append("False")
-            available_USA.append(getMostPermissiveStatus(getAllStatuses(orangebook,originalItem)))
+            available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,originalItem)))
             print("item ", index, ": ", item)
             curie,label = getCurie(item)
             curie_ID.append(curie[0])
