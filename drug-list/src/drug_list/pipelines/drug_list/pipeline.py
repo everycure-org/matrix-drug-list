@@ -13,7 +13,11 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=nodes.generate_ob_list,
-                inputs=["orange-book-products", "fda_exclusions", "fda_ob_split_exclusions" ], 
+                inputs=
+                        ["orange-book-products", 
+                        "fda_exclusions", 
+                        "fda_ob_split_exclusions",
+                        "params:basic_anions" ], 
                 outputs="orange_book_list",
                 name = "generate-orange-book-list-node"
             ),
