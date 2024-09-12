@@ -9,3 +9,5 @@ notebook
 scikit-learn~=1.5.1; python_version >= "3.9"
 scikit-learn<=1.4.0,>=1.0; python_version < "3.9"
 setuptools; python_version >= "3.12"
+psycopg2-binary
+openpyxl
