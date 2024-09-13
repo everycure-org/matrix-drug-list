@@ -18,8 +18,9 @@ def preferRXCUI(curieList, labelList):
                 return item, labelList[idx]
         return curieList[0], labelList[0]           
 
-def getCurie(name):
-    itemRequest = 'https://name-resolution-sri.renci.org/lookup?string=' + name + '&autocomplete=false&offset=0&limit=10&biolink_type=ChemicalOrDrugOrTreatment'
+def getCurie(name, params):
+    itemRequest = params['url']+params['service']+'?string='+name+'&autocomplete='+str(params['autocomplete_setting']).lower()+'&offset='+str(params['offset'])+'&limit='+str(params['id_limit'])+"&biolink_type="+params['biolink_type']
+   
     returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
     resolvedName = returned.curie
     resolvedLabel = returned.label
@@ -50,56 +51,21 @@ def getMostPermissiveStatus(statusList):
     else:
         return "UNSURE"
 
-def isBasicCation(item):
-    basic_cations = ['FERROUS', 
-                    'CALCIUM', 
-                    'SODIUM', 
-                    'MAGNESIUM', 
-                    'MANGANESE', 
-                    'POTASSIUM', 
-                    'ALUMINUM', 
-                    'TITANIUM', 
-                    'COPPER', 
-                    'CUPRIC', 
-                    'LYSINE']
-    
-    if item in basic_cations:
-        return True
-
-    return False
-
-def isOtherBasicTerm(item):
-    other_identifiers = ['HYDRATE', 
-                        'DIHYDRATE', 
-                        'MONOHYDRATE', 
-                        'TRIHYDRATE', 
-                        'ANHYDROUS', 
-                        'MONOBASIC', 
-                        'DIBASIC', 
-                        'LYSINE', 
-                        'ARGININE',
-                        'HEPTAHYDRATE']
-
-    if item in other_identifiers:
-        return True
-        
-    return False
-
-def isBasicSaltOrMetalOxide(inString, basic_anions):
+def isBasicSaltOrMetalOxide(inString, basic_anions, basic_cations, other_identifiers):
     components = inString.strip().split()
     
     for item in components:
         item = item.replace(';', '').replace(',','')
-        if not isBasicCation(item) and not (item in basic_anions) and not isOtherBasicTerm(item):
+        if not item in basic_cations and not item in basic_anions and not item in other_identifiers:
             return False
             
     return True
 
-def removeCationsAnionsAndBasicTerms(ingredientString, basic_anions):
-    if not isBasicSaltOrMetalOxide(ingredientString, basic_anions):
+def removeCationsAnionsAndBasicTerms(ingredientString, basic_anions, basic_cations, other_identifiers):
+    if not isBasicSaltOrMetalOxide(ingredientString, basic_anions, basic_cations, other_identifiers):
         components = ingredientString.strip().split()
         for ind,i in enumerate(components):
-            if i in basic_anions or isBasicCation(i) or isOtherBasicTerm(i):
+            if i in basic_anions or i in basic_cations or i in other_identifiers:
                 components[ind] = ''
         newString = ''
         for i in components:
@@ -108,7 +74,7 @@ def removeCationsAnionsAndBasicTerms(ingredientString, basic_anions):
         return newString
     return ingredientString
 
-def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, basic_anions: List[str]) -> pd.DataFrame:
+def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, basic_anions: List[str], basic_cations: List[str], other_identifiers: List[str], name_resolver_params: dict) -> pd.DataFrame:
     splitExclusions = set(list(split_exclusions['name']))
     obCombinationTherapies, obSingleTherapies = getCombinationTherapiesAndSingleTherapiesLists(rawdata, splitExclusions)
     print(len(set(obCombinationTherapies)), " combination therapeutics.")
@@ -130,6 +96,7 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
 
     labelDict = {}
     idDict = {}
+
     for index, item in enumerate(drugList):
         originalItem = item
         
@@ -149,13 +116,12 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             itemsList.sort()
             
             for i in itemsList:
-                curie, label = getCurie(i)
+                curie, label = getCurie(i, name_resolver_params)
                 ingredientCuriesList.append(curie[0])
                 if i not in obSingleTherapies:
                     drugList.append(i.strip())
                     obSingleTherapies.append(i.strip())
-                #print("old name: ", i, "; new name: ", removeCationsAnionsAndBasicTerms(i))
-                newIngList.append(removeCationsAnionsAndBasicTerms(i, basic_anions)) #5
+                newIngList.append(removeCationsAnionsAndBasicTerms(i, basic_anions, basic_cations, other_identifiers)) #5
 
             ingredient_curies.append(ingredientCuriesList) #6
             newName = ""
@@ -167,14 +133,14 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             newName = newName[:-2]
             therapyName.append(newName)#9
             
-            curie,label = getCurie(newName)
+            curie,label = getCurie(newName, name_resolver_params)
             preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
             curie_ID.append(preferred_curie) #7
             curie_label.append(preferred_label) #8
             
             
         elif originalItem in obSingleTherapies:
-            item = removeCationsAnionsAndBasicTerms(item, basic_anions)
+            item = removeCationsAnionsAndBasicTerms(item, basic_anions, basic_cations, other_identifiers)
             itemStatuses = getAllStatuses(rawdata,originalItem)
             name_in_orange_book.append(originalItem)
             therapyName.append(item)
@@ -182,7 +148,7 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
             combination_therapy.append("False")
             available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,originalItem)))
             print("item ", index, ": ", item)
-            curie,label = getCurie(item)
+            curie,label = getCurie(item, name_resolver_params)
             curie_ID.append(curie[0])
             curie_label.append(label[0])
             ingredient_curies.append("NA")

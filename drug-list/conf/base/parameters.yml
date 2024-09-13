@@ -23,3 +23,43 @@ basic_anions:
   - DISULFIDE
   - FLUORIDE
   - GLYCEROPHOSPHATE
+
+
+basic_cations:
+  - FERROUS
+  - CALCIUM
+  - SODIUM
+  - MAGNESIUM
+  - MANGANESE
+  - POTASSIUM
+  - ALUMINUM
+  - TITANIUM
+  - COPPER
+  - CUPRIC
+  - LYSINE
+
+other_identifiers:
+  - HYDRATE
+  - MONOHYDRATE
+  - DIHYDRATE
+  - TRIHYDRATE
+  - TETRAHYDRATE
+  - HEPTAHYDRATE
+  - ANHYDROUS
+  - MONOBASIC
+  - DIBASIC
+  - LYSINE
+  - ARGININE
+
+
+
+name_resolver_params:
+  url: https://name-resolution-sri.renci.org/
+  service: lookup
+  autocomplete_setting: false
+  id_limit: 10
+  offset: 0
+  biolink_type: ChemicalOrDrugOrTreatment
+  autocomplete: false
+
+

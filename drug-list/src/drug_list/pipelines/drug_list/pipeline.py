@@ -17,7 +17,10 @@ def create_pipeline(**kwargs) -> Pipeline:
                         ["orange-book-products", 
                         "fda_exclusions", 
                         "fda_ob_split_exclusions",
-                        "params:basic_anions" ], 
+                        "params:basic_anions",
+                        "params:basic_cations",
+                        "params:other_identifiers",
+                        "params:name_resolver_params"], 
                 outputs="orange_book_list",
                 name = "generate-orange-book-list-node"
             ),
