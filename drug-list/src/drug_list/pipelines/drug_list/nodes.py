@@ -12,21 +12,63 @@ import requests
 from io import StringIO
 from typing import List
 
-def preferRXCUI(curieList, labelList):
-        for idx, item in enumerate(curieList):
-            if "RXCUI" in item:
-                return item, labelList[idx]
-        return curieList[0], labelList[0]           
+def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
+    """
+    Args: 
+        curieList (list[str]): list of Curie IDs
+        labelList (list[str]): list of labels for respective Curie IDs
+
+    Returns:
+        tuple: first Curie ID that is in RXCUI and associated label, or just first curie and label if no RXCUI.
+
+    """
+
+    for idx, item in enumerate(curieList):
+        if "RXCUI" in item:
+            return item, labelList[idx]
+    return curieList[0], labelList[0]           
 
 def getCurie(name, params):
-    itemRequest = params['url']+params['service']+'?string='+name+'&autocomplete='+str(params['autocomplete_setting']).lower()+'&offset='+str(params['offset'])+'&limit='+str(params['id_limit'])+"&biolink_type="+params['biolink_type']
-   
+    """
+    Args:
+        name (str): string to be identified
+        params (tuple): name resolver parameters to feed into get request
+    
+    Returns:
+        resolvedName (list[str]): IDs most closely matching string.
+        resolvedLabel (list[str]): List of labels associated with respective resolvedName.
+
+    """
+
+    itemRequest = (params['url']+
+                   params['service']+
+                   '?string='+
+                   name+
+                   '&autocomplete='+
+                   str(params['autocomplete_setting']).lower()+
+                   '&offset='+
+                   str(params['offset'])+
+                   '&limit='+
+                   str(params['id_limit'])+
+                   "&biolink_type="+
+                   params['biolink_type'])
     returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
     resolvedName = returned.curie
     resolvedLabel = returned.label
     return resolvedName, resolvedLabel
 
 def getCombinationTherapiesAndSingleTherapiesLists(orangebook, exclusions):
+    """
+    Args:
+        orangebook: pandas.DataFrame
+        exclusions: pandas.DataFrame
+    
+    Returns:
+        list: combination therapies
+        list: single therapies
+
+    """
+
     obCombinationTherapies = []
     obSingleTherapies = []
     ingredientList = set(list(orangebook.Ingredient))
@@ -37,125 +79,180 @@ def getCombinationTherapiesAndSingleTherapiesLists(orangebook, exclusions):
             obSingleTherapies.append(item.strip())
     return list(set(obCombinationTherapies)), list(set(obSingleTherapies))
 
-def getAllStatuses(orangebook, item):
+def getAllStatuses(orangebook: pd.DataFrame, item: str) -> list[str]:
+    """
+    Args:
+        orangebook (pd.DataFrame): orange book raw data
+        item (str): name of the drug whose statuses are to be returned
+
+    Returns:
+        list[str]: availability status of all drug formulations for named drug in the United States
+
+    """
+
     indices = [i for i, x in enumerate(orangebook['Ingredient']) if x == item]
     return list(orangebook['Type'][indices])
 
-def getMostPermissiveStatus(statusList):
+def getMostPermissiveStatus(statusList: list[str]) -> str:
+    """
+    Args:
+        statusList (list[str]): list of statuses for a particular chemical entity
+
+    Returns:
+        str: The most permissive availability status for the chemical entity in the US (over the counter > RX > DISCN) or "UNSURE" if not clear.
+
+    """
     if "OTC" in statusList:
         return "OTC"
     elif "RX" in statusList:
         return "RX"
     elif "DISCN" in statusList:
         return "DISCONTINUED"
-    else:
-        return "UNSURE"
+    return "UNSURE"
 
-def isBasicSaltOrMetalOxide(inString, basic_anions, basic_cations, other_identifiers):
-    components = inString.strip().split()
+def isBasicSaltOrMetalOxide(inString: str, desalting_params: dict) -> bool:
+    """
+    Args:
+        inString (str): name of drug
+        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
     
+    Returns:
+        bool: if the drug is a simple salt or metal oxide (sodium chloride, potassium phosphate, etc.), return TRUE. Otherwise, return FALSE
+    
+    """
+
+    components = inString.strip().split()
     for item in components:
         item = item.replace(';', '').replace(',','')
-        if not item in basic_cations and not item in basic_anions and not item in other_identifiers:
-            return False
-            
+        if not item in desalting_params['basic_cations'] and not item in desalting_params['basic_anions'] and not item in desalting_params['other_identifiers']:
+            return False 
     return True
 
-def removeCationsAnionsAndBasicTerms(ingredientString, basic_anions, basic_cations, other_identifiers):
-    if not isBasicSaltOrMetalOxide(ingredientString, basic_anions, basic_cations, other_identifiers):
+def removeCationsAnionsAndBasicTerms(ingredientString, desalting_params):
+    """
+    Args:
+        ingredientString (str): name of drug ingredient
+        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
+
+    Returns:
+        str: cleaned ingredient name with salts removed. Ideally this will be just the active moiety. The full salt name is returned if it is
+             a simple salt, e.g. sodium chloride or potassium phosphate.
+
+    """
+
+    if not isBasicSaltOrMetalOxide(ingredientString, desalting_params):
         components = ingredientString.strip().split()
         for ind,i in enumerate(components):
-            if i in basic_anions or i in basic_cations or i in other_identifiers:
+            if i in desalting_params['basic_anions'] or i in desalting_params['basic_cations'] or i in desalting_params['other_identifiers']:
                 components[ind] = ''
         newString = ''
         for i in components:
             newString = newString + i + " "
         newString = newString[:-1]
         return newString
-    return ingredientString
+    return ingredientString.strip()
 
-def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, basic_anions: List[str], basic_cations: List[str], other_identifiers: List[str], name_resolver_params: dict) -> pd.DataFrame:
+def split_therapy_fda(combination_therapy_name):
+    """
+    Args: 
+        combination_therapy_name (str): full combination therapy string including delimiters.
+
+    Returns:
+        list[str]: a list with the delimiters and whitespace stripped.
+
+    """
+    
+    ingList = re.split('; | ; | AND | W/ ', combination_therapy_name)
+    items_list = list(set(ingList))
+    items_list.sort()
+    return [x.strip() for x in items_list]
+
+def getIngredientCuries(items_list, name_resolver_params):
+    """
+    Args:
+        items_list(list[str]): list of active ingredients in the therapy.
+        name_resolver_params(dict): parameters fed into name resolve to acquire IDs
+
+    Returns:
+        list[str]: list containing the best ID for each ingredient in the therapy.
+
+    """
+    ingredientCuriesList = []
+    for i in items_list:
+        curie, label = getCurie(i, name_resolver_params)
+        ingredientCuriesList.append(curie[0])
+
+    return ingredientCuriesList 
+
+
+def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+    """
+    Args:
+        rawdata (pd.DatFrame): raw FDA orange book data from products file.
+        exclusions: items selected by medical team for exclusion for various reasons (diagnostic/contrast/radiolabel, water, other compounds inviable for repurposing)
+        split_exclusions: items containing delimiters that would normally cause the item to be split but should actually remain as a single item.
+        desalting_params: parameters used for removing inactive cations, anions, and other terms from active ingredient names
+        name_resolver_params: parameters used for accessing the RENCI name resolving service to acquire IDs for each compound.
+
+    Returns:
+        pd.DataFrame: a drug list containing all of the FDA-approved small-molecule therapeutic compounds, their approval statuses, and connection to their individual components when they are combination therapies.
+
+    """
+
     splitExclusions = set(list(split_exclusions['name']))
     obCombinationTherapies, obSingleTherapies = getCombinationTherapiesAndSingleTherapiesLists(rawdata, splitExclusions)
     print(len(set(obCombinationTherapies)), " combination therapeutics.")
     print(len(set(obSingleTherapies)), " single-ingredient therapeutics.")
     obSingleSet = set(obSingleTherapies)
     print("splitting combination therapies (currently ", len(obSingleSet), " items in list)")
-    
     exclusions_names = exclusions['name']
-    Approved_USA = []
-    combination_therapy = []
-    therapyName = []
-    name_in_orange_book = []
-    available_USA = []
-    curie_ID = []
-    curie_label = []
-    ingredient_curies = []
-
+    Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     drugList = list(set(obCombinationTherapies + obSingleTherapies).difference(exclusions_names))
-
     labelDict = {}
     idDict = {}
-
+    
     for index, item in enumerate(drugList):
+        print("item",index, ":", item)
         originalItem = item
-        
+        # Things that get updated in the same way whether the therapy is a combination therapy or not 
+        name_in_orange_book.append(originalItem) #1
+        Approved_USA.append("True") #2
+        available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#3
+        # Combination Therapy Handling
         if originalItem in obCombinationTherapies:
-            name_in_orange_book.append(item)#1
-            Approved_USA.append("True")#2
-            combination_therapy.append("True")#3
-            available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#4
-            print("item",index, ":", item)
-        
-            newIngList = []
-            ingList = re.split('; | ; | AND | W/ ', item)
-            ingredientCuriesList = []
-
-
-            itemsList = list(set(ingList))
-            itemsList.sort()
-            
-            for i in itemsList:
-                curie, label = getCurie(i, name_resolver_params)
-                ingredientCuriesList.append(curie[0])
-                if i not in obSingleTherapies:
-                    drugList.append(i.strip())
-                    obSingleTherapies.append(i.strip())
-                newIngList.append(removeCationsAnionsAndBasicTerms(i, basic_anions, basic_cations, other_identifiers)) #5
-
-            ingredient_curies.append(ingredientCuriesList) #6
-            newName = ""
-
-            
-            for i in newIngList:
-                if i is not None:
-                    newName += i + "; "
-            newName = newName[:-2]
-            therapyName.append(newName)#9
-            
+            combination_therapy.append("True")#4
+            items_list = split_therapy_fda(originalItem)
+            new_therapies = list(i for i in items_list if i not in obSingleSet)
+            print("found new therapies: ", new_therapies)
+            for i in new_therapies:
+                drugList.append(i)
+                obSingleTherapies.append(i)
+            obSingleSet = set(obSingleTherapies)
+            newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
+            newName = '; '.join(i for i in newIngList if i is not None)
+            print("new name after desalting: ", newName)
+            therapyName.append(newName)#5
             curie,label = getCurie(newName, name_resolver_params)
             preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
-            curie_ID.append(preferred_curie) #7
-            curie_label.append(preferred_label) #8
-            
-            
-        elif originalItem in obSingleTherapies:
-            item = removeCationsAnionsAndBasicTerms(item, basic_anions, basic_cations, other_identifiers)
+            curie_ID.append(preferred_curie) #6
+            curie_label.append(preferred_label) #7
+            ingredient_curies.append(getIngredientCuries(newIngList, name_resolver_params)) #8
+        # Single Component Therapy Handling
+        else:
+            combination_therapy.append("False")#4
+            item = removeCationsAnionsAndBasicTerms(item, desalting_params)
             itemStatuses = getAllStatuses(rawdata,originalItem)
-            name_in_orange_book.append(originalItem)
-            therapyName.append(item)
-            Approved_USA.append("True")
-            combination_therapy.append("False")
-            available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,originalItem)))
-            print("item ", index, ": ", item)
-            curie,label = getCurie(item, name_resolver_params)
-            curie_ID.append(curie[0])
-            curie_label.append(label[0])
-            ingredient_curies.append("NA")
+            therapyName.append(item) #5
+            curie,label = getCurie(item, name_resolver_params) 
+            curie_ID.append(curie[0])#6
+            curie_label.append(label[0])#7
+            ingredient_curies.append("NA")#8
+
 
     print(len(obSingleTherapies), "single-component therapies after splitting")
     print(len(obSingleTherapies + obCombinationTherapies), " total therapies after splitting")
     print(len(therapyName), " therapies after exclusions")
+    breakpoint()
 
     data = pd.DataFrame({'single_ID':curie_ID, 
                         'ID_Label':curie_label, 
@@ -165,5 +262,5 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
                         'Combination_Therapy':combination_therapy, 
                         'Ingredient_IDs':ingredient_curies,
                         'Available_USA':available_USA,})
-
+    
     return data
