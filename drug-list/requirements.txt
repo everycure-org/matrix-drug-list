@@ -11,3 +11,5 @@ scikit-learn<=1.4.0,>=1.0; python_version < "3.9"
 setuptools; python_version >= "3.12"
 psycopg2-binary
 openpyxl
+pre-commit
+poetry
