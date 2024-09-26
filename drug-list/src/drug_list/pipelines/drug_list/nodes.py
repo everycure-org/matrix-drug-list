@@ -1,6 +1,6 @@
 import pandas as pd
 pd.options.mode.chained_assignment = None  #default='warn'
-import numpy as np
+#import numpy as np
 import difflib as dl
 import psycopg2 as pg
 import re
@@ -404,11 +404,134 @@ def generate_ema_list(rawdata: pd.DataFrame, ema_exclusions: pd.DataFrame, ema_s
     return data
 
 
+def generate_raw_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame) -> list[str]:
+    exclusions_names = exclusions['name']
+    drugList = rawdata['Active Ingredient (underlined: new active ingredient)']
+    for idx, item in enumerate(drugList):
+        try:
+            item = item.upper()
+            item = item.strip().replace("A COMBINATION DRUG OF", "").strip(' ')
+            if "(" in item:
+                item = item.replace("(1)","").replace("(2)","").replace("(3)","").replace("(4)","").replace("(5)","").replace("(6)","").replace("(7)","").replace("(8)","")\
+                .replace("(9)","").replace("(10)","").replace("(11)","").replace("(12)","").replace("(13)","").replace("(14)","").replace("(15)","").replace("(16)","")\
+                .replace("(17)","").replace("(18)","").replace("(19)","").replace("(20)","").replace("(20)","").replace("(21)","").replace("1)","").replace("2)","").replace("5)","")
+
+            item = item.replace("1)", "").replace("2)", "").replace("5)","")
+
+            item = item.replace("\n", " ")
+
+            if type(item)!=float and (("," in item) or ("/" in item) or (" AND " in item)) and item not in exclusions:
+                item= item.replace(",","; ").replace(" AND ", "; ").replace("/","; ").replace(";;",";").replace(";  ", "; ").replace("  ;", ";").replace(" ;",";").strip()
+            drugList[idx] = item
+        except:
+            print("encountered problem with ", item)
+            drugList[idx]="error"
+    return list(set(drugList).difference(exclusions_names))
+
+
+def is_combination_therapy_pmda(item: str, split_exclusions: pd.DataFrame) -> bool:
+    split_exc = split_exclusions['name']
+    if type(item)!=float and (("," in item) or ("/" in item) or (" AND " in item) or (";" in item)) and item not in split_exc:
+        return True
+   
+    return False
+
+
+def split_therapy_pmda(item: str):
+    """
+    Args: 
+        item (str): full combination therapy string including delimiters.
+
+    Returns:
+        list[str]: a list with the delimiters and whitespace stripped.
+
+    """
+    ingList = re.split(' , |,|/| \ | AND |; ', item)
+    items_list = list(set(ingList))
+    items_list.sort()
+    return [x.strip() for x in items_list]
+
+
+def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+   
+    Approved_Japan = []
+    combination_therapy = []
+    therapyName = []
+    name_in_pmda_list = []
+    curie_ID = []
+    curie_label = []
+    ingredient_curies = []
+
+    for index, item in enumerate(drugList):
+        print(index)
+        name_in_pmda_list.append(item) #1
+        Approved_Japan.append("True") #2
+        
+        if is_combination_therapy_pmda(item, split_exclusions):
+            newIngredientList = []
+            combination_therapy.append("True") #3
+            items_list = split_therapy_pmda(item)
+            new_therapies = list(i for i in items_list if i not in drugList)
+            for i in new_therapies:
+                drugList.append(i)
+            newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
+            newName = '; '.join(i for i in newIngList if i is not None)
+            therapyName.append(newName)#4
+            curie,label = getCurie(newName, name_resolver_params)
+            preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
+            curie_ID.append(preferred_curie) #5
+            curie_label.append(preferred_label) #6
+
+            item_curie_list = []
+            for i in newIngList:
+                curie, label = getCurie(i, name_resolver_params)
+                item_curie_list.append(curie[0])
+            
+            ingredient_curies.append(item_curie_list)#7
+
+
+
+            # newTherapyName = ""
+            # newIngredientList.sort()
+            # for i in newIngredientList:
+            #     newTherapyName += i.strip() + "; "
+            # newTherapyName = newTherapyName[:-2].strip()
+            # therapyName.append(newTherapyName) #5
+            # curie, label = getCurie(newTherapyName, name_resolver_params)
+            # preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
+            # curie_ID.append(preferred_curie) #6
+            # curie_label.append(preferred_label) #7
+
+
+        else:
+            combination_therapy.append("False")
+            newName = removeCationsAnionsAndBasicTerms(item.upper().strip(), desalting_params)
+            therapyName.append(newName) #3
+            curie, label = getCurie(newName, name_resolver_params) #4
+            curie_ID.append(curie[0]) #5
+            curie_label.append(label[0]) #6
+            ingredient_curies.append("NA") #7
+
+    data = pd.DataFrame({'single_ID':curie_ID,
+                        'ID_Label':curie_label,
+                        'Name_PMDA':name_in_pmda_list,
+                        'Therapy_Name':therapyName,
+                        'Approved_Japan': Approved_Japan, 
+                        'Combination_Therapy':combination_therapy, 
+                        'Ingredient_IDs':ingredient_curies})
+
+    return data
+
 
 def generate_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
-    return None
+    #splitExclusions = set(list(split_exclusions['name']))
+    drugList = generate_raw_pmda_list(rawdata, exclusions)
+    print(drugList)
+    data = generate_pmda_df(drugList, split_exclusions, desalting_params, name_resolver_params)
+    return data
 
 
 def build_drug_list(fda_rawdata: pd.DataFrame, ) -> pd.DataFrame:
-    generate_ob_list(rawdata, exclusions, fda_ob_split_exclusions, desalting_params, name_resolver_params)
-    generate_ema_list(ema_raw_data_set, ema_exclusions, ema_split_exclusions, desalting_params, name_resolver_params)
+    fda_ob_list = generate_ob_list(rawdata, exclusions, fda_ob_split_exclusions, desalting_params, name_resolver_params)
+    ema_list = generate_ema_list(ema_raw_data_set, ema_exclusions, ema_split_exclusions, desalting_params, name_resolver_params)
+    pmda_list = generate_pmda_list(pmda_raw_data_set, pmda_exclusions, pmda_split_exclusions, desalting_params, name_resolver_params)
