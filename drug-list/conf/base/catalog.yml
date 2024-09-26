@@ -1,3 +1,4 @@
+# ORANGE BOOK
 orange-book-products:
   type: pandas.CSVDataset
   filepath: data/01_raw/products.txt
@@ -15,3 +16,46 @@ fda_ob_split_exclusions:
 orange_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/fda_ob_list.xlsx
+
+# PURPLE BOOK
+
+
+
+# EMA
+ema_raw_data_set:
+  type: pandas.ExcelDataset
+  filepath: data/01_raw/EPAR_table_4.xlsx
+  load_args:
+    skiprows: [0,1,2,3,4,5,6,7]
+
+ema_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_exclusions.xlsx
+
+ema_split_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_split_exclusions.xlsx
+
+ema_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_list.xlsx
+
+
+
+# PMDA
+pmda_raw_data_set:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/pmda_approvals.csv
+
+pmda_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_exclusions.xlsx
+
+pmda_split_exclusions: 
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_split_exclusions.xlsx
+
+pmda_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_list.xlsx
+
