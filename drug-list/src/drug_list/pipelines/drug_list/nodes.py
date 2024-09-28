@@ -7,7 +7,7 @@ import re
 import requests
 from io import StringIO
 from typing import List
-
+from tqdm import tqdm
 
 
 def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
@@ -38,7 +38,7 @@ def getCurie(name, params):
         resolvedLabel (list[str]): List of labels associated with respective resolvedName.
 
     """
-
+    #return [name], [name] #only for testing
     itemRequest = (params['url']+
                    params['service']+
                    '?string='+
@@ -55,7 +55,7 @@ def getCurie(name, params):
     failedCounts = 0
     while not success:
         try:
-            print("Resolving ", name)
+            #print("Resolving ", name)
             returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
             resolvedName = returned.curie
             resolvedLabel = returned.label
@@ -218,8 +218,8 @@ def add_row(original_dataframe: pd.DataFrame, column_values: dict) -> pd.DataFra
 def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, rawdata, split_exclusions ) -> pd.DataFrame:
     Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     
-    for index, item in enumerate(list(drugList)):
-        print("item",index, ":", item)
+    for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
+        # print("item",index, ":", item)
         originalItem = item
         # Things that get updated in the same way whether the therapy is a combination therapy or not 
         name_in_orange_book.append(originalItem) #1
@@ -230,12 +230,12 @@ def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, 
             combination_therapy.append("True")#4
             items_list = split_therapy_fda(originalItem)
             new_therapies = list(i for i in items_list if i not in drugList)
-            print("found new therapies: ", new_therapies)
+            #print("found new therapies: ", new_therapies)
             for i in new_therapies:
                 drugList.add(i)
             newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
             newName = '; '.join(i for i in newIngList if i is not None)
-            print("new name after desalting: ", newName)
+        # print("new name after desalting: ", newName)
             therapyName.append(newName)#5
             curie,label = getCurie(newName, name_resolver_params)
             preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
@@ -345,8 +345,8 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
     curie_label = []
     ingredientCuriesList = []
 
-    for index, item in enumerate(list(drugList)):
-        print(index, item)
+    for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
+        # print(index, item)
         name_in_ema.append(item)#1
         Approved_EMA.append("True")#2
 
@@ -356,12 +356,12 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
 
             items_list = split_therapy_ema(item)
             new_therapies = list(i for i in items_list if i not in drugList)
-            print("found new therapies: ", new_therapies)
+        # print("found new therapies: ", new_therapies)
             for i in new_therapies:
                 drugList.add(i)
             newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
             newName = '; '.join(i for i in newIngList if i is not None)
-            print("new name:", newName)
+            #print("new name:", newName)
             therapyName.append(newName) #4
 
             curie,label = getCurie(newName, name_resolver_params)
@@ -462,8 +462,8 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
     curie_label = []
     ingredient_curies = []
 
-    for index, item in enumerate(drugList):
-        print(index)
+    for index, item in tqdm(enumerate(drugList), total=len(drugList)):
+        #print(index)
         name_in_pmda_list.append(item) #1
         Approved_Japan.append("True") #2
         
@@ -490,6 +490,7 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
             ingredient_curies.append(item_curie_list)#7
 
 
+            
 
             # newTherapyName = ""
             # newIngredientList.sort()
@@ -531,7 +532,68 @@ def generate_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_ex
     return data
 
 
-def build_drug_list(fda_rawdata: pd.DataFrame, ) -> pd.DataFrame:
-    fda_ob_list = generate_ob_list(rawdata, exclusions, fda_ob_split_exclusions, desalting_params, name_resolver_params)
-    ema_list = generate_ema_list(ema_raw_data_set, ema_exclusions, ema_split_exclusions, desalting_params, name_resolver_params)
-    pmda_list = generate_pmda_list(pmda_raw_data_set, pmda_exclusions, pmda_split_exclusions, desalting_params, name_resolver_params)
+def build_drug_list(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.DataFrame) -> pd.DataFrame:
+    data = merge_lists(fda_list, ema_list, pmda_list)
+    return data
+
+
+
+def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.DataFrame,):
+    df1 = pd.merge(ema_list, pmda_list, on="single_ID", how="outer")
+    df1 = df1.loc[:, ~df1.columns.str.contains('^Unnamed')]
+    df1 = merge_columns('Therapy_Name_x', 'Therapy_Name_y', df1, 'Therapy_Name')
+    df1 = merge_columns('ID_Label_x', 'ID_Label_y', df1, 'ID_Label')
+    df1 = merge_columns('Combination_Therapy_x', 'Combination_Therapy_y', df1, 'Combination_Therapy')
+    df1 = merge_columns('Ingredient_IDs_x', 'Ingredient_IDs_y', df1, 'Ingredient_IDs')
+    df1 = merge_identical_subcolumns('Combination_Therapy', df1, "|")
+    df1 = merge_identical_subcolumns('Therapy_Name', df1, "|")
+    df1 = merge_identical_subcolumns('ID_Label', df1, "|")
+
+
+    df2 = pd.merge(df1, fda_list, on="single_ID", how="outer")
+    df2 = df2.loc[:, ~df2.columns.str.contains('^Unnamed')]
+    df2 = merge_columns('ID_Label_x', 'ID_Label_y', df2, 'ID_Label')
+    df2 = merge_columns('Therapy_Name_x', 'Therapy_Name_y', df2, 'Therapy_Name')
+    df2 = merge_columns('Combination_Therapy_x', 'Combination_Therapy_y', df2, 'Combination_Therapy')
+    df2 = merge_columns('Ingredient_IDs_x', 'Ingredient_IDs_y', df2, 'Ingredient_IDs')
+
+    for idx, row in df2.iterrows():
+        if not row['Approved_Europe']== True:
+            df2['Approved_Europe'][idx] = False
+        if not row['Approved_Japan']== True:
+            df2['Approved_Japan'][idx] = False
+        if not row['Approved_USA']== True:
+            df2['Approved_USA'][idx] = False
+
+    df2 = merge_identical_subcolumns('Combination_Therapy', df2, "|")
+    df2 = merge_identical_subcolumns('Therapy_Name', df2, "|")
+    df2 = merge_identical_subcolumns('ID_Label', df2, "|")
+
+    return df2
+    #df2.to_csv("drugList.tsv", sep='\t')    
+
+
+
+
+
+def merge_columns (name1, name2, df, newname):
+    df[newname]=df.apply(lambda x:'%s|%s' % (x[name1],x[name2]),axis=1)
+    df.drop(name1,axis=1,inplace=True)
+    df.drop(name2, axis=1,inplace=True)
+
+    for idx, row in df.iterrows():
+        if 'nan' in row[newname]:
+            df[newname][idx] = row[newname].replace('nan', "").replace('|','')
+    return df
+
+def merge_identical_subcolumns(colname, df, delimiter):
+    for idx, row in df.iterrows():
+        subColumns = row[colname].split(delimiter)
+        for idx2, i in enumerate(subColumns):
+            subColumns[idx2] = i.strip()
+        if len(subColumns)==2:
+            if subColumns[0] == subColumns[1]:
+                df[colname][idx] = subColumns[0]
+
+    return df
+

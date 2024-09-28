@@ -59,3 +59,11 @@ pmda_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/pmda_list.xlsx
 
+
+# Final Drug List
+
+drug_list_final:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/drugList.tsv
+  save_args:
+    sep: "\t"
