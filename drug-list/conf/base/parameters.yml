@@ -24,6 +24,8 @@ desalting_params:
     - DISULFIDE
     - FLUORIDE
     - GLYCEROPHOSPHATE
+    - GLUCEPTATE 
+    
   basic_cations:
     - FERROUS
     - CALCIUM
@@ -36,6 +38,7 @@ desalting_params:
     - COPPER
     - CUPRIC
     - LYSINE
+    - DISODIUM
   other_identifiers:
     - HYDRATE
     - MONOHYDRATE

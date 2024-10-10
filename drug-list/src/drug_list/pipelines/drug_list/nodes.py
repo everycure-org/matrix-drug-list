@@ -1,14 +1,15 @@
 import pandas as pd
-pd.options.mode.chained_assignment = None  #default='warn'
-#import numpy as np
+pd.options.mode.chained_assignment = None
 import difflib as dl
-import psycopg2 as pg
 import re
 import requests
 from io import StringIO
 from typing import List
 from tqdm import tqdm
+import json
 
+testing = False
+limit = 10 # limit for testing full pipeline with limited number of names per list
 
 def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
     """
@@ -26,6 +27,30 @@ def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
             return item, labelList[idx]
     return curieList[0], labelList[0]           
 
+def Normalize(item: str):
+    item_request = f"https://nodenormalization-sri.renci.org/1.5/get_normalized_nodes?curie={item}&conflate=true&drug_chemical_conflate=true&description=false&individual_types=false"    
+    success = False
+    failedCounts = 0
+    while not success:
+        try:
+            response = requests.get(item_request)
+            output = json.loads(response.text)
+            alternate_ids = output[item]['equivalent_identifiers']
+            returned_ids = list(item['identifier'] for item in alternate_ids)
+            success = True
+        except:
+            print('name resolver error')
+            failedCounts += 1
+        if failedCounts >= 5:
+            return "Error"
+    return returned_ids
+
+def get_equivalent_ids(input_list: list[str]) -> list[str]:
+    normalized_IDs = []
+    for item in tqdm(input_list):
+        normalized_IDs.append(Normalize(item))
+    return normalized_IDs
+        
 
 def getCurie(name, params):
     """
@@ -55,7 +80,6 @@ def getCurie(name, params):
     failedCounts = 0
     while not success:
         try:
-            #print("Resolving ", name)
             returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
             resolvedName = returned.curie
             resolvedLabel = returned.label
@@ -216,42 +240,42 @@ def add_row(original_dataframe: pd.DataFrame, column_values: dict) -> pd.DataFra
 
 
 def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, rawdata, split_exclusions ) -> pd.DataFrame:
-    Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     
+    Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
-        # print("item",index, ":", item)
-        originalItem = item
-        # Things that get updated in the same way whether the therapy is a combination therapy or not 
-        name_in_orange_book.append(originalItem) #1
-        Approved_USA.append("True") #2
-        available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#3
+        if not testing or testing and index < limit:
+            originalItem = item
+            # Things that get updated in the same way whether the therapy is a combination therapy or not 
+            name_in_orange_book.append(originalItem) #1
+            Approved_USA.append("True") #2
+            available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#3
 
-        if isCombinationTherapy(item, split_exclusions): # Combination Therapy Handling
-            combination_therapy.append("True")#4
-            items_list = split_therapy_fda(originalItem)
-            new_therapies = list(i for i in items_list if i not in drugList)
-            #print("found new therapies: ", new_therapies)
-            for i in new_therapies:
-                drugList.add(i)
-            newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
-            newName = '; '.join(i for i in newIngList if i is not None)
-        # print("new name after desalting: ", newName)
-            therapyName.append(newName)#5
-            curie,label = getCurie(newName, name_resolver_params)
-            preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
-            curie_ID.append(preferred_curie) #6
-            curie_label.append(preferred_label) #7
-            ingredient_curies.append(getIngredientCuries(newIngList, name_resolver_params)) #8
-        
-        else: #Single Component Therapy Handling
-            combination_therapy.append("False")#4
-            item = removeCationsAnionsAndBasicTerms(item, desalting_params)
-            itemStatuses = getAllStatuses(rawdata,originalItem)
-            therapyName.append(item) #5
-            curie,label = getCurie(item, name_resolver_params) 
-            curie_ID.append(curie[0])#6
-            curie_label.append(label[0])#7
-            ingredient_curies.append("NA")#8
+            if isCombinationTherapy(item, split_exclusions): # Combination Therapy Handling
+                combination_therapy.append("True")#4
+                items_list = split_therapy_fda(originalItem)
+                new_therapies = list(i for i in items_list if i not in drugList)
+                for i in new_therapies:
+                    drugList.add(i)
+                newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
+                newName = '; '.join(i for i in newIngList if i is not None)
+                therapyName.append(newName)#5
+                curie,label = getCurie(newName, name_resolver_params)
+                preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
+                curie_ID.append(preferred_curie) #6
+                curie_label.append(preferred_label) #7
+                ingredient_curies.append(getIngredientCuries(newIngList, name_resolver_params)) #8
+            
+            else: #Single Component Therapy Handling
+                combination_therapy.append("False")#4
+                item = removeCationsAnionsAndBasicTerms(item, desalting_params)
+                itemStatuses = getAllStatuses(rawdata,originalItem)
+                therapyName.append(item) #5
+                curie,label = getCurie(item, name_resolver_params) 
+                curie_ID.append(curie[0])#6
+                curie_label.append(label[0])#7
+                ingredient_curies.append("NA")#8
+
+    equiv_ids = get_equivalent_ids(curie_ID)
 
     data = pd.DataFrame({'single_ID':curie_ID, 
                         'ID_Label':curie_label, 
@@ -260,7 +284,9 @@ def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, 
                         'Approved_USA': Approved_USA, 
                         'Combination_Therapy':combination_therapy, 
                         'Ingredient_IDs':ingredient_curies,
-                        'Available_USA':available_USA,})
+                        'Available_USA':available_USA,
+                        'Equivalent_IDs': equiv_ids,
+                        })
     
     return data
 
@@ -345,46 +371,48 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
     curie_label = []
     ingredientCuriesList = []
 
+    
+
     for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
-        # print(index, item)
-        name_in_ema.append(item)#1
-        Approved_EMA.append("True")#2
+        if not testing or testing and index < limit:
+            name_in_ema.append(item)#1
+            Approved_EMA.append("True")#2
 
-        if isCombinationTherapy_ema(item, split_exclusions):
-            item_curie_list = []
-            combination_therapy.append("True")#3
+            if isCombinationTherapy_ema(item, split_exclusions):
+                item_curie_list = []
+                combination_therapy.append("True")#3
 
-            items_list = split_therapy_ema(item)
-            new_therapies = list(i for i in items_list if i not in drugList)
-        # print("found new therapies: ", new_therapies)
-            for i in new_therapies:
-                drugList.add(i)
-            newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
-            newName = '; '.join(i for i in newIngList if i is not None)
-            #print("new name:", newName)
-            therapyName.append(newName) #4
+                items_list = split_therapy_ema(item)
+                new_therapies = list(i for i in items_list if i not in drugList)
+                for i in new_therapies:
+                    drugList.add(i)
+                newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
+                newName = '; '.join(i for i in newIngList if i is not None)
+                therapyName.append(newName) #4
 
-            curie,label = getCurie(newName, name_resolver_params)
-            preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
+                curie,label = getCurie(newName, name_resolver_params)
+                preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
 
-            #curie, label = preferRXCUI(getCurie(newName, name_resolver_params))
-            curie_ID.append(preferred_curie) #5
-            curie_label.append(preferred_label) #6
+                #curie, label = preferRXCUI(getCurie(newName, name_resolver_params))
+                curie_ID.append(preferred_curie) #5
+                curie_label.append(preferred_label) #6
 
-            item_curie_list = []
-            for i in newIngList:
-                curie, label = getCurie(i, name_resolver_params)
-                item_curie_list.append(curie[0])
-            
-            ingredientCuriesList.append(item_curie_list)#7
+                item_curie_list = []
+                for i in newIngList:
+                    curie, label = getCurie(i, name_resolver_params)
+                    item_curie_list.append(curie[0])
+                
+                ingredientCuriesList.append(item_curie_list)#7
 
-        else:
-            combination_therapy.append("False")#3
-            therapyName.append(removeCationsAnionsAndBasicTerms(item.strip(), desalting_params))#4
-            curie,label = getCurie(item, name_resolver_params)
-            curie_ID.append(curie[0])#5
-            curie_label.append(label[0])#6
-            ingredientCuriesList.append("NA")#7
+            else:
+                combination_therapy.append("False")#3
+                therapyName.append(removeCationsAnionsAndBasicTerms(item.strip(), desalting_params))#4
+                curie,label = getCurie(item, name_resolver_params)
+                curie_ID.append(curie[0])#5
+                curie_label.append(label[0])#6
+                ingredientCuriesList.append("NA")#7
+
+    equiv_ids = get_equivalent_ids(curie_ID)
 
     data = pd.DataFrame({'single_ID':curie_ID,
                      'ID_Label':curie_label,
@@ -392,7 +420,9 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
                      'Therapy_Name':therapyName, 
                      'Approved_Europe': Approved_EMA, 
                      'Combination_Therapy':combination_therapy, 
-                     'Ingredient_IDs':ingredientCuriesList})
+                     'Ingredient_IDs':ingredientCuriesList,
+                     'Equivalent_IDs':equiv_ids,
+                     })
     return data
 
 
@@ -400,7 +430,6 @@ def generate_ema_list(rawdata: pd.DataFrame, ema_exclusions: pd.DataFrame, ema_s
     splitExclusions = set(list(ema_split_exclusions['name']))
     drugList = generate_raw_ema_list(rawdata, ema_exclusions)
     data = generate_ema_df(drugList, splitExclusions, desalting_params, name_resolver_params)
-
     return data
 
 
@@ -463,55 +492,41 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
     ingredient_curies = []
 
     for index, item in tqdm(enumerate(drugList), total=len(drugList)):
-        #print(index)
-        name_in_pmda_list.append(item) #1
-        Approved_Japan.append("True") #2
-        
-        if is_combination_therapy_pmda(item, split_exclusions):
-            newIngredientList = []
-            combination_therapy.append("True") #3
-            items_list = split_therapy_pmda(item)
-            new_therapies = list(i for i in items_list if i not in drugList)
-            for i in new_therapies:
-                drugList.append(i)
-            newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
-            newName = '; '.join(i for i in newIngList if i is not None)
-            therapyName.append(newName)#4
-            curie,label = getCurie(newName, name_resolver_params)
-            preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
-            curie_ID.append(preferred_curie) #5
-            curie_label.append(preferred_label) #6
-
-            item_curie_list = []
-            for i in newIngList:
-                curie, label = getCurie(i, name_resolver_params)
-                item_curie_list.append(curie[0])
+        if not testing or testing and index < limit:
+            name_in_pmda_list.append(item) #1
+            Approved_Japan.append("True") #2
             
-            ingredient_curies.append(item_curie_list)#7
+            if is_combination_therapy_pmda(item, split_exclusions):
+                newIngredientList = []
+                combination_therapy.append("True") #3
+                items_list = split_therapy_pmda(item)
+                new_therapies = list(i for i in items_list if i not in drugList)
+                for i in new_therapies:
+                    drugList.append(i)
+                newIngList = list(removeCationsAnionsAndBasicTerms(i.strip(), desalting_params).strip(' ') for i in items_list) 
+                newName = '; '.join(i for i in newIngList if i is not None)
+                therapyName.append(newName)#4
+                curie,label = getCurie(newName, name_resolver_params)
+                preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
+                curie_ID.append(preferred_curie) #5
+                curie_label.append(preferred_label) #6
 
+                item_curie_list = []
+                for i in newIngList:
+                    curie, label = getCurie(i, name_resolver_params)
+                    item_curie_list.append(curie[0])
+                
+                ingredient_curies.append(item_curie_list)#7
 
-            
-
-            # newTherapyName = ""
-            # newIngredientList.sort()
-            # for i in newIngredientList:
-            #     newTherapyName += i.strip() + "; "
-            # newTherapyName = newTherapyName[:-2].strip()
-            # therapyName.append(newTherapyName) #5
-            # curie, label = getCurie(newTherapyName, name_resolver_params)
-            # preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
-            # curie_ID.append(preferred_curie) #6
-            # curie_label.append(preferred_label) #7
-
-
-        else:
-            combination_therapy.append("False")
-            newName = removeCationsAnionsAndBasicTerms(item.upper().strip(), desalting_params)
-            therapyName.append(newName) #3
-            curie, label = getCurie(newName, name_resolver_params) #4
-            curie_ID.append(curie[0]) #5
-            curie_label.append(label[0]) #6
-            ingredient_curies.append("NA") #7
+            else:
+                combination_therapy.append("False")
+                newName = removeCationsAnionsAndBasicTerms(item.upper().strip(), desalting_params)
+                therapyName.append(newName) #3
+                curie, label = getCurie(newName, name_resolver_params) #4
+                curie_ID.append(curie[0]) #5
+                curie_label.append(label[0]) #6
+                ingredient_curies.append("NA") #7
+    equiv_ids = get_equivalent_ids(curie_ID)
 
     data = pd.DataFrame({'single_ID':curie_ID,
                         'ID_Label':curie_label,
@@ -519,15 +534,15 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
                         'Therapy_Name':therapyName,
                         'Approved_Japan': Approved_Japan, 
                         'Combination_Therapy':combination_therapy, 
-                        'Ingredient_IDs':ingredient_curies})
+                        'Ingredient_IDs':ingredient_curies,
+                        'Equivalent_IDs':equiv_ids,
+                        })
 
     return data
 
 
 def generate_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
-    #splitExclusions = set(list(split_exclusions['name']))
     drugList = generate_raw_pmda_list(rawdata, exclusions)
-    print(drugList)
     data = generate_pmda_df(drugList, split_exclusions, desalting_params, name_resolver_params)
     return data
 
@@ -545,6 +560,8 @@ def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.Da
     df1 = merge_columns('ID_Label_x', 'ID_Label_y', df1, 'ID_Label')
     df1 = merge_columns('Combination_Therapy_x', 'Combination_Therapy_y', df1, 'Combination_Therapy')
     df1 = merge_columns('Ingredient_IDs_x', 'Ingredient_IDs_y', df1, 'Ingredient_IDs')
+    df1 = merge_columns('Equivalent_IDs_x', 'Equivalent_IDs_y', df1, 'Equivalent_IDs')
+
     df1 = merge_identical_subcolumns('Combination_Therapy', df1, "|")
     df1 = merge_identical_subcolumns('Therapy_Name', df1, "|")
     df1 = merge_identical_subcolumns('ID_Label', df1, "|")
@@ -556,6 +573,7 @@ def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.Da
     df2 = merge_columns('Therapy_Name_x', 'Therapy_Name_y', df2, 'Therapy_Name')
     df2 = merge_columns('Combination_Therapy_x', 'Combination_Therapy_y', df2, 'Combination_Therapy')
     df2 = merge_columns('Ingredient_IDs_x', 'Ingredient_IDs_y', df2, 'Ingredient_IDs')
+    df2 = merge_columns('Equivalent_IDs_x', 'Equivalent_IDs_y', df2, 'Equivalent_IDs')
 
     for idx, row in df2.iterrows():
         if not row['Approved_Europe']== True:
@@ -571,8 +589,6 @@ def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.Da
 
     return df2
     #df2.to_csv("drugList.tsv", sep='\t')    
-
-
 
 
 
