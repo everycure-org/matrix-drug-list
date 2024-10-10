@@ -19,7 +19,7 @@ data/**
 
 # keep also the example dataset
 !data/01_raw/*
-
+!data/03_primary/*
 
 ##########################
 # Common files
