@@ -1,0 +1,69 @@
+# ORANGE BOOK
+orange-book-products:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/products.txt
+  load_args:
+    sep: '~'
+
+fda_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_exclusions.xlsx
+
+fda_ob_split_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_ob_split_exclusions.xlsx
+
+orange_book_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/fda_ob_list.xlsx
+
+# PURPLE BOOK
+
+
+
+# EMA
+ema_raw_data_set:
+  type: pandas.ExcelDataset
+  filepath: data/01_raw/EPAR_table_4.xlsx
+  load_args:
+    skiprows: [0,1,2,3,4,5,6,7]
+
+ema_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_exclusions.xlsx
+
+ema_split_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_split_exclusions.xlsx
+
+ema_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema_list.xlsx
+
+
+
+# PMDA
+pmda_raw_data_set:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/pmda_approvals.csv
+
+pmda_exclusions:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_exclusions.xlsx
+
+pmda_split_exclusions: 
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_split_exclusions.xlsx
+
+pmda_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda_list.xlsx
+
+
+# Final Drug List
+
+drug_list_final:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/drugList.tsv
+  save_args:
+    sep: "\t"

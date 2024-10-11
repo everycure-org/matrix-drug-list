@@ -1,0 +1,34 @@
+[build-system]
+requires = [ "setuptools",]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drug_list"
+readme = "README.md"
+dynamic = [ "dependencies", "version",]
+
+[project.scripts]
+drug-list = "drug_list.__main__:main"
+
+[tool.kedro]
+package_name = "drug_list"
+project_name = "drug-list"
+kedro_init_version = "0.19.8"
+tools = [ "Data Structure", "PySpark", "Kedro Viz",]
+example_pipeline = "False"
+source_dir = "src"
+
+[project.entry-points."kedro.hooks"]
+
+[tool.setuptools.dynamic.dependencies]
+file = "requirements.txt"
+
+[tool.setuptools.dynamic.version]
+attr = "drug_list.__version__"
+
+[tool.setuptools.packages.find]
+where = [ "src",]
+namespaces = false
+
+[tool.kedro_telemetry]
+project_id = "cf4c7b0a8b6942e09950fb7210139259"
