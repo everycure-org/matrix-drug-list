@@ -51,9 +51,16 @@ def create_pipeline(**kwargs) -> Pipeline:
                         "ema_list", 
                         "pmda_list"],
                          
-                outputs= "drug_list_final",
+                outputs= "drug_list",
                 name = "generate-drug-list-node"
             ),
+            node(
+                func=nodes.enrich_drug_list,
+                inputs=['drug_list_final',
+                        'params:enrichment_tags']
+                outputs = 'drug_list_final',
+                name = 'drug-list-enrichment'
+            )
         ]
     )
 

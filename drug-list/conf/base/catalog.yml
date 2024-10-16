@@ -60,8 +60,15 @@ pmda_list:
   filepath: data/02_intermediate/pmda_list.xlsx
 
 
-# Final Drug List
+# Merged Drug List
 
+drug_list:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/untagged_drugList.tsv
+  save_args:
+    sep: "\t"
+
+# Post-enrichment final list
 drug_list_final:
   type: pandas.CSVDataset
   filepath: data/03_primary/drugList.tsv

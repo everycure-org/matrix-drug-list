@@ -613,3 +613,23 @@ def merge_identical_subcolumns(colname, df, delimiter):
 
     return df
 
+def generate_tag(drug_list, model_params):
+    tag_list = []
+    client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+    for drug in drug_list:
+        output = client.embeddings.create(
+            input=drug,
+            model=model_params.get('model'),
+            prompt=model_params.get('prompt'),
+            temperature=model_params.get('temperature')
+        )
+        tag_list.append(output)
+    return tag_list
+
+def enrich_drug_list(drug_list, params):
+    for tag in params.keys()
+        input_col = params[tag].get('input_col')
+        output_col = params[tag].get('output_col')
+        model_params = params[tag].get('model_params')
+        drug_list[output_col] = generate_tag(drug_list[input_col], model_params)
+    return drug_list
