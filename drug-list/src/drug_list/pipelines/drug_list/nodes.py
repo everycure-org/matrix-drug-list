@@ -11,8 +11,8 @@ import os
 from typing import List, Dict
 from openai import OpenAI
 
-testing = False
-limit = 10 # limit for testing full pipeline with limited number of names per list
+testing = True
+limit = 100 # limit for testing full pipeline with limited number of names per list
 
 def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
     """
@@ -42,7 +42,7 @@ def Normalize(item: str):
             returned_ids = list(item['identifier'] for item in alternate_ids)
             success = True
         except:
-            print('name resolver error')
+            #print('name resolver error')
             failedCounts += 1
         if failedCounts >= 5:
             return "Error"
@@ -88,7 +88,7 @@ def getCurie(name, params):
             resolvedLabel = returned.label
             success = True
         except:
-            print('name resolver error')
+            #print('name resolver error')
             failedCounts += 1
         
         if failedCounts >= 5:
@@ -627,7 +627,8 @@ def generate_tag(drug_list:List, model_params:Dict)-> List:
     """
     tag_list = []
     client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
-    for drug in drug_list:
+
+    for drug in tqdm(drug_list):
         output = client.chat.completions.create(
             model=model_params.get('model'),
             messages=[
@@ -649,6 +650,7 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
         pd.DataFrame with x new tag columns (where x corresponds to number of tags specified in params)
     """
     for tag in params.keys():
+        print(f"applying tag: \'{tag}\' to drug list")
         input_col = params[tag].get('input_col')
         output_col = params[tag].get('output_col')
         model_params = params[tag].get('model_params')
