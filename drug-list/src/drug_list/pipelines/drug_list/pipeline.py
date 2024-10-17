@@ -56,8 +56,8 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
             node(
                 func=nodes.enrich_drug_list,
-                inputs=['drug_list_final',
-                        'params:enrichment_tags']
+                inputs=['drug_list',
+                        'params:enrichment_tags'],
                 outputs = 'drug_list_final',
                 name = 'drug-list-enrichment'
             )
