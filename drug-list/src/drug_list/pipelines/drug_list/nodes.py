@@ -648,7 +648,6 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
     Returns
         pd.DataFrame with x new tag columns (where x corresponds to number of tags specified in params)
     """
-    drug_list = drug_list.head(20)
     for tag in params.keys():
         input_col = params[tag].get('input_col')
         output_col = params[tag].get('output_col')
