@@ -9,6 +9,7 @@ from tqdm import tqdm
 import json
 import os
 from typing import List, Dict
+from openai import OpenAI
 
 testing = False
 limit = 10 # limit for testing full pipeline with limited number of names per list
@@ -627,13 +628,15 @@ def generate_tag(drug_list:List, model_params:Dict)-> List:
     tag_list = []
     client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
     for drug in drug_list:
-        output = client.embeddings.create(
-            input=drug,
+        output = client.chat.completions.create(
             model=model_params.get('model'),
-            prompt=model_params.get('prompt'),
-            temperature=model_params.get('temperature')
+            messages=[
+                    {"role": "system", "content": model_params.get('prompt')},
+                    {"role": "user", "content": drug}
+                ],
+            temperature= model_params.get('temperature')
         )
-        tag_list.append(output)
+        tag_list.append(output.choices[0].message.content)
     return tag_list
 
 def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
@@ -645,7 +648,8 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
     Returns
         pd.DataFrame with x new tag columns (where x corresponds to number of tags specified in params)
     """
-    for tag in params.keys()
+    drug_list = drug_list.head(20)
+    for tag in params.keys():
         input_col = params[tag].get('input_col')
         output_col = params[tag].get('output_col')
         model_params = params[tag].get('model_params')

@@ -67,6 +67,8 @@ drug_list:
   filepath: data/03_primary/untagged_drugList.tsv
   save_args:
     sep: "\t"
+  load_args:
+    sep: "\t"
 
 # Post-enrichment final list
 drug_list_final:
