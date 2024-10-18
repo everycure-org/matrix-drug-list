@@ -11,7 +11,7 @@ import os
 from typing import List, Dict
 from openai import OpenAI
 
-testing = True
+testing = False
 limit = 100 # limit for testing full pipeline with limited number of names per list
 
 def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
