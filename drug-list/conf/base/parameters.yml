@@ -67,14 +67,14 @@ enrichment_tags:
     output_col: is_steroid
     model_params: 
       model: gpt-4o-mini
-      prompt: Is this drug a steroid drug? Return TRUE or FALSE only
+      prompt: Is this drug a corticosteroid drug? Return TRUE or FALSE only
       temperature: 0.8
   antibiotic:
     input_col: ID_Label
     output_col: is_antimicrobial
     model_params:
-      model: gpt-4o-mini
-      prompt: Is this drug an antimicrobial drug such as an antibiotic, an antiviral, an antiparasitic, or an antifungal drug? Return TRUE or FALSE only
+      model: gpt-4o
+      prompt: "Are any of these drugs in any of the following drug classes: an antibiotic drug, an antiviral drug (usually end in '-vir' or '-udine'), an antiretroviral drug, an antiparasitic drug, or an antifungal drug? Return TRUE or FALSE only"
       temperature: 0.8
   chemotherapy:
     input_col: ID_Label
