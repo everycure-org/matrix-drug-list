@@ -64,7 +64,7 @@ pmda_list:
 
 drug_list:
   type: pandas.CSVDataset
-  filepath: data/03_primary/merged_drugList.csv
+  filepath: data/03_primary/merged_drugList.tsv
   save_args:
     sep: "\t"
   load_args:
