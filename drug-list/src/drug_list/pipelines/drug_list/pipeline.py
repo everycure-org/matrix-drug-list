@@ -55,6 +55,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs= "drug_list",
                 name = "generate-drug-list-node"
             ),
+            
+            # PURPLE BOOK BUILD
             node(
                 func=nodes.create_standardized_columns_purplebook,
                 inputs=[
@@ -91,6 +93,20 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'purple_book_list_with_approval_tags',
                 name = 'add-approval-tags-purplebook'
             ),
+            node(
+                func=nodes.add_ingredients,
+                inputs=[
+                    'purple_book_list_with_approval_tags',
+                    'params:delimiters_purplebook'
+                ],
+                outputs = 'purple_book_list_with_ingredients',
+                name = 'add-ingredients-purplebook'
+            ),
+            
+            
+            
+            
+            
             node(
                 func=nodes.enrich_drug_list,
                 inputs=['drug_list',

@@ -888,20 +888,28 @@ def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
     input_list['curie_label']=labels
     return input_list
 
+
+def multi_split(inString, delims):
+    result = [inString]
+    for delim in delims:
+        result = [substr for s in result for substr in s.split(delim)]
+    return [s for s in result if s]
+
 def add_ingredients(input_list: pd.DataFrame, delimiters: list[str]):
-    return None
-    #for row,idx in input_list.iterrows():
+    ingredients_list = []
+    for idx,row in input_list.iterrows():
+        if row['combination therapy']==True:
+            ingredients_list.append(multi_split(row['drug_name'], delimiters))
+        else:
+            ingredients_list.append(None)
 
-def string_to_list_of_ingredients(input_string: str, delimiter: str) -> list[str]:
-    list_out = ""
-    return list_out
-
+    input_list["ingredients_list"]=ingredients_list
+    return input_list
 
 def add_ingredient_ids(input_list: pd.DataFrame, delimiter) -> pd.DataFrame:
     ingredient_ids_list=[]
-    for row,idx in input_list.iterrows():
-        ingredient_list = string_to_list_of_ingredients(row['ingredient_list'], delimiter)
-        ingredient_ids_list.append(ingredient_list)
+    for idx,row in input_list.iterrows():
+        ingredient_ids_list.append(identify(i) for i in row['ingredients_list'])
     input_list["ingredient_ids"] = ingredient_ids_list
     return input_list
     

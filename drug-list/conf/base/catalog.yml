@@ -67,7 +67,7 @@ fda_purple_book_raw_data_set:
   type: pandas.CSVDataset
   filepath: data/01_raw/purplebook-data-download.csv
   load_args:
-    skiprows: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28, 29, 30, 31]
+    skiprows: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
 
 purple_book_list_standardized:
   type: pandas.ExcelDataset
@@ -84,6 +84,10 @@ purple_book_list_with_curies:
 purple_book_list_with_approval_tags:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/purplebook-with-approval-tags.xlsx
+
+purple_book_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook-with-ingredients.xlsx
 
 purple_book_list:
   type: pandas.ExcelDataset
