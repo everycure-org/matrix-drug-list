@@ -24,8 +24,27 @@ desalting_params:
     - DISULFIDE
     - FLUORIDE
     - GLYCEROPHOSPHATE
-    - GLUCEPTATE 
-    
+    - GLUCEPTATE
+    - NITRITE
+    - HYDROBROMIDE
+    - SUCCINATE
+    - TEREPHTHALATE
+    - CARBONATE  
+    - HYDROBROMIDE
+    - BENZOATE 
+    - BITARTRATE
+    - FUROATE
+    - PAMOATE
+    - VALERATE
+    - BESYLATE
+    - TOSYLATE
+    - METHYLSULFATE
+    - SUCCINATE
+    - LACTATE
+    - DIPHOSPHATE
+
+
+
   basic_cations:
     - FERROUS
     - CALCIUM
@@ -39,6 +58,9 @@ desalting_params:
     - CUPRIC
     - LYSINE
     - DISODIUM
+    - ZINC
+    - IODINE
+  
   other_identifiers:
     - HYDRATE
     - MONOHYDRATE
@@ -51,7 +73,26 @@ desalting_params:
     - DIBASIC
     - LYSINE
     - ARGININE
+    - POLISTIREX
+    - COMPLEX
+    - PRECIPITATED
+    - DIMETHYL
+    - ANHYDROUS
+    - PENTAVALENT
 
+
+# PURPLE BOOK
+delimiters_purplebook:
+  - " and "
+  - ", with "
+
+split_exclusions_purplebook:
+  - ""
+
+
+
+
+# NAME RESOLVER
 name_resolver_params:
   url: https://name-resolution-sri.renci.org/
   service: lookup
@@ -61,6 +102,8 @@ name_resolver_params:
   biolink_type: ChemicalOrDrugOrTreatment
   autocomplete: false
 
+
+# DRUG CATEGORY TAGS
 enrichment_tags:
   steroid:
     input_col: ID_Label
@@ -90,5 +133,11 @@ enrichment_tags:
       model: gpt-4o-mini
       prompt: Is this drug a drug which is primarily used to regulate glucose levels? Return TRUE or FALSE only
       temperature: 0.8
+
+# APPROVAL TAGS  
+approval_tag_usa: "approved_usa"
+approval_tag_europe: "approved_eu"
+approval_tag_japan: "approved_japan"
+
 
   

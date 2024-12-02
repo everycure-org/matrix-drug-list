@@ -12,7 +12,7 @@ from typing import List, Dict
 from openai import OpenAI
 
 testing = False
-limit = 100 # limit for testing full pipeline with limited number of names per list
+limit = 1000 # limit for testing full pipeline with limited number of names per list
 
 def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
     """
@@ -31,6 +31,8 @@ def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
     return curieList[0], labelList[0]           
 
 def Normalize(item: str):
+    if testing:
+        return ["test"], ["test"]
     item_request = f"https://nodenormalization-sri.renci.org/1.5/get_normalized_nodes?curie={item}&conflate=true&drug_chemical_conflate=true&description=false&individual_types=false"    
     success = False
     failedCounts = 0
@@ -81,6 +83,10 @@ def getCurie(name, params):
                    params['biolink_type'])
     success = False
     failedCounts = 0
+
+    if testing:
+        return ["test"], ["test"]
+    
     while not success:
         try:
             returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
@@ -229,20 +235,18 @@ def getIngredientCuries(items_list, name_resolver_params):
     return ingredientCuriesList 
 
 
-def add_row(original_dataframe: pd.DataFrame, column_values: dict) -> pd.DataFrame:
+def add_approval_tags(original_dataframe: pd.DataFrame, column_name: str) -> pd.DataFrame:
     """
     args:
-        original_dataframe (pd.DataFrame): current data frame.
-        column_values (dict): all of the values of the column to be added
-
+        original_dataframe (pd.DataFrame): current drug list data frame
+        column_name (str): what to call the resulting column
     returns:
-        pd.DataFrame: the original dataframe with a new row appended.
+        new_dataframe (pd.DataFrame): drug list with approval tags
     """
+    original_dataframe[column_name]=True
+    return original_dataframe
 
-    return None
-
-
-def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, rawdata, split_exclusions ) -> pd.DataFrame:
+def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, rawdata, split_exclusions, approval_tags_name ) -> pd.DataFrame:
     
     Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
@@ -250,7 +254,7 @@ def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, 
             originalItem = item
             # Things that get updated in the same way whether the therapy is a combination therapy or not 
             name_in_orange_book.append(originalItem) #1
-            Approved_USA.append("True") #2
+            #Approved_USA.append("True") #2
             available_USA.append(getMostPermissiveStatus(getAllStatuses(rawdata,item)))#3
 
             if isCombinationTherapy(item, split_exclusions): # Combination Therapy Handling
@@ -284,12 +288,13 @@ def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, 
                         'ID_Label':curie_label, 
                         'Name_Orange_Book':name_in_orange_book,
                         'Therapy_Name':therapyName, 
-                        'Approved_USA': Approved_USA, 
                         'Combination_Therapy':combination_therapy, 
                         'Ingredient_IDs':ingredient_curies,
                         'Available_USA':available_USA,
                         'Equivalent_IDs': equiv_ids,
                         })
+
+    data = add_approval_tags(data, approval_tags_name)
     
     return data
 
@@ -319,11 +324,13 @@ def generate_raw_ema_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame) -> li
     approvedDrugs = humanDrugs[humanDrugs['Authorisation status']=='Authorised']
     drugnames = list(approvedDrugs['International non-proprietary name (INN) / common name'])
     exclusions_names = exclusions['name']
+    drugnames = list(i.upper() if type(i)==str else i for i in drugnames)
     drugList = set(drugnames).difference(exclusions_names)
     return drugList
 
 
-def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+
+def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict, approval_tag_name: str) -> pd.DataFrame:
     """
     Args:
         rawdata (pd.DatFrame): raw FDA orange book data from products file.
@@ -338,13 +345,12 @@ def generate_ob_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_excl
     """
     splitExclusions = set(list(split_exclusions['name']))
     drugList = generate_raw_list(rawdata, exclusions)
-    data = generate_ob_df(drugList, desalting_params, name_resolver_params, rawdata, splitExclusions)
+    data = generate_ob_df(drugList, desalting_params, name_resolver_params, rawdata, splitExclusions, approval_tag_name)
     return data
 
 
-
 def isCombinationTherapy_ema(item: str, exclusions: list[str]) -> bool:
-    if type(item)!=float and (("," in item) or ("/" in item) or ("AND" in item)) and item not in exclusions:
+    if type(item)!=float and (("," in item) or ("/" in item) or ("AND" in item)) and item.upper not in exclusions:
         return True
     return False
 
@@ -365,7 +371,7 @@ def split_therapy_ema(combination_therapy_name):
 
 
 
-def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_params: dict, name_resolver_params: dict, approval_tags_name:str) -> pd.DataFrame:
     Approved_EMA = []
     combination_therapy = []
     therapyName = []
@@ -374,17 +380,14 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
     curie_label = []
     ingredientCuriesList = []
 
-    
-
     for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
         if not testing or testing and index < limit:
             name_in_ema.append(item)#1
-            Approved_EMA.append("True")#2
+            #Approved_EMA.append("True")#2
 
-            if isCombinationTherapy_ema(item, split_exclusions):
+            if isCombinationTherapy_ema(item, split_exclusions) and item not in split_exclusions:
                 item_curie_list = []
                 combination_therapy.append("True")#3
-
                 items_list = split_therapy_ema(item)
                 new_therapies = list(i for i in items_list if i not in drugList)
                 for i in new_therapies:
@@ -395,8 +398,6 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
 
                 curie,label = getCurie(newName, name_resolver_params)
                 preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
-
-                #curie, label = preferRXCUI(getCurie(newName, name_resolver_params))
                 curie_ID.append(preferred_curie) #5
                 curie_label.append(preferred_label) #6
 
@@ -421,18 +422,22 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
                      'ID_Label':curie_label,
                      'Name_EMA':name_in_ema,
                      'Therapy_Name':therapyName, 
-                     'Approved_Europe': Approved_EMA, 
                      'Combination_Therapy':combination_therapy, 
                      'Ingredient_IDs':ingredientCuriesList,
                      'Equivalent_IDs':equiv_ids,
                      })
+
+    data = add_approval_tags(data, approval_tags_name)
+
     return data
 
 
-def generate_ema_list(rawdata: pd.DataFrame, ema_exclusions: pd.DataFrame, ema_split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+
+def generate_ema_list(rawdata: pd.DataFrame, ema_exclusions: pd.DataFrame, ema_split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict, approval_tag_name: str) -> pd.DataFrame:
     splitExclusions = set(list(ema_split_exclusions['name']))
+    #print(f"Split exclusions: {splitExclusions}")
     drugList = generate_raw_ema_list(rawdata, ema_exclusions)
-    data = generate_ema_df(drugList, splitExclusions, desalting_params, name_resolver_params)
+    data = generate_ema_df(drugList, splitExclusions, desalting_params, name_resolver_params, approval_tag_name)
     return data
 
 
@@ -484,8 +489,9 @@ def split_therapy_pmda(item: str):
     return [x.strip() for x in items_list]
 
 
-def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
-   
+
+
+def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict, approval_tags_name: str) -> pd.DataFrame:
     Approved_Japan = []
     combination_therapy = []
     therapyName = []
@@ -493,13 +499,12 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
     curie_ID = []
     curie_label = []
     ingredient_curies = []
-
     for index, item in tqdm(enumerate(drugList), total=len(drugList)):
         if not testing or testing and index < limit:
             name_in_pmda_list.append(item) #1
             Approved_Japan.append("True") #2
             
-            if is_combination_therapy_pmda(item, split_exclusions):
+            if is_combination_therapy_pmda(item, split_exclusions) and item not in split_exclusions:
                 newIngredientList = []
                 combination_therapy.append("True") #3
                 items_list = split_therapy_pmda(item)
@@ -513,14 +518,12 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
                 preferred_curie, preferred_label = preferRXCUI(curie, label) #prefer RXCUI labels only if combination therapy.
                 curie_ID.append(preferred_curie) #5
                 curie_label.append(preferred_label) #6
-
                 item_curie_list = []
                 for i in newIngList:
                     curie, label = getCurie(i, name_resolver_params)
                     item_curie_list.append(curie[0])
                 
                 ingredient_curies.append(item_curie_list)#7
-
             else:
                 combination_therapy.append("False")
                 newName = removeCationsAnionsAndBasicTerms(item.upper().strip(), desalting_params)
@@ -535,24 +538,26 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
                         'ID_Label':curie_label,
                         'Name_PMDA':name_in_pmda_list,
                         'Therapy_Name':therapyName,
-                        'Approved_Japan': Approved_Japan, 
                         'Combination_Therapy':combination_therapy, 
                         'Ingredient_IDs':ingredient_curies,
                         'Equivalent_IDs':equiv_ids,
                         })
 
+    data = add_approval_tags(data, approval_tags_name)
+
     return data
 
 
-def generate_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict) -> pd.DataFrame:
+def generate_pmda_list(rawdata: pd.DataFrame, exclusions: pd.DataFrame, split_exclusions: pd.DataFrame, desalting_params: dict, name_resolver_params: dict, approval_tags_name: str) -> pd.DataFrame:
     drugList = generate_raw_pmda_list(rawdata, exclusions)
-    data = generate_pmda_df(drugList, split_exclusions, desalting_params, name_resolver_params)
+    data = generate_pmda_df(drugList, split_exclusions, desalting_params, name_resolver_params, approval_tags_name)
     return data
 
 
 def build_drug_list(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.DataFrame) -> pd.DataFrame:
     data = merge_lists(fda_list, ema_list, pmda_list)
     return data
+
 
 
 
@@ -579,12 +584,12 @@ def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.Da
     df2 = merge_columns('Equivalent_IDs_x', 'Equivalent_IDs_y', df2, 'Equivalent_IDs')
 
     for idx, row in df2.iterrows():
-        if not row['Approved_Europe']== True:
-            df2['Approved_Europe'][idx] = False
-        if not row['Approved_Japan']== True:
-            df2['Approved_Japan'][idx] = False
-        if not row['Approved_USA']== True:
-            df2['Approved_USA'][idx] = False
+        if not row['approved_eu']== True:
+            df2.loc['approved_eu',idx] = False
+        if not row['approved_japan',idx]== True:
+            df2.loc['approved_japan',idx] = False
+        if not row['approved_usa'] == True:
+            df2.loc['approved_usa',idx] = False
 
     df2 = merge_identical_subcolumns('Combination_Therapy', df2, "|")
     df2 = merge_identical_subcolumns('Therapy_Name', df2, "|")
@@ -602,7 +607,7 @@ def merge_columns (name1, name2, df, newname):
 
     for idx, row in df.iterrows():
         if 'nan' in row[newname]:
-            df[newname][idx] = row[newname].replace('nan', "").replace('|','')
+            df.loc[newname,idx] = row[newname].replace('nan', "").replace('|','')
     return df
 
 def merge_identical_subcolumns(colname, df, delimiter):
@@ -612,7 +617,7 @@ def merge_identical_subcolumns(colname, df, delimiter):
             subColumns[idx2] = i.strip()
         if len(subColumns)==2:
             if subColumns[0] == subColumns[1]:
-                df[colname][idx] = subColumns[0]
+                df.loc[colname,idx] = subColumns[0]
 
     return df
 
@@ -656,3 +661,270 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
         model_params = params[tag].get('model_params')
         drug_list[output_col] = generate_tag(drug_list[input_col], model_params)
     return drug_list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#########################################
+##### GENERAL LIST BUILDER HERE #########
+#########################################
+
+
+def create_standardized_columns_purplebook(df_in: pd.DataFrame) -> pd.DataFrame:
+    df_in.rename(
+        columns={'Proper Name':'drug_name',
+                 'Approval Date':'approval_date'
+                 },
+        inplace=True
+        )
+    return df_in
+
+def is_combination_therapy(item: str, delimiters: list[str], exclusions: list[str]) -> bool:
+    if item in exclusions:
+        return False
+    for i in delimiters:
+        if i in item:
+            return True
+    return False
+
+def tag_combination_therapies(inputList: pd.DataFrame, delimiters: list[str], exclusions: list[str])->pd.DataFrame:
+    combination_therapy = []
+    for idx, row in tqdm(inputList.iterrows(), total=len(inputList)):
+        combination_therapy.append(is_combination_therapy(row['drug_name'], delimiters, exclusions))
+    inputList['combination therapy'] = combination_therapy
+    return inputList
+
+
+def identify(name, params):
+    """
+    Args:
+        name (str): string to be identified
+        params (tuple): name resolver parameters to feed into get request
+    
+    Returns:
+        resolvedName (list[str]): IDs most closely matching string.
+        resolvedLabel (list[str]): List of labels associated with respective resolvedName.
+
+    """
+    #return [name], [name] #only for testing
+    itemRequest = (params['url']+
+                   params['service']+
+                   '?string='+
+                   name+
+                   '&autocomplete='+
+                   str(params['autocomplete_setting']).lower()+
+                   '&offset='+
+                   str(params['offset'])+
+                   '&limit='+
+                   str(params['id_limit'])+
+                   "&biolink_type="+
+                   params['biolink_type'])
+    success = False
+    failedCounts = 0
+
+    if testing:
+        return ["test"], ["test"]
+    
+    while not success:
+        try:
+            returned = (pd.read_json(StringIO(requests.get(itemRequest).text)))
+            resolvedName = returned.curie
+            resolvedLabel = returned.label
+            success = True
+        except:
+            #print('name resolver error')
+            failedCounts += 1
+        
+        if failedCounts >= 5:
+            return "Error", "Error"
+    return resolvedName[0], resolvedLabel[0]
+
+def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
+    ids = []
+    labels = []
+    ids_cache = {}
+    labels_cache = {}
+    for idx,row in tqdm(input_list.iterrows(), total=len(input_list), desc="identifying drugs"):
+        drug_name = row['drug_name']
+        if drug_name in ids_cache:
+            ids.append(ids_cache[drug_name])
+            labels.append(labels_cache[drug_name])
+        else:
+            item_curie, item_label = identify(drug_name, params)
+            ids.append(item_curie)
+            labels.append(item_label)
+            ids_cache[drug_name]=item_curie
+            labels_cache[drug_name]=item_label
+    
+    input_list['curie']=ids
+    input_list['curie_label']=labels
+    return input_list
+
+def add_ingredients(input_list: pd.DataFrame, delimiters: list[str]):
+    return None
+    #for row,idx in input_list.iterrows():
+
+def string_to_list_of_ingredients(input_string: str, delimiter: str) -> list[str]:
+    list_out = ""
+    return list_out
+
+
+def add_ingredient_ids(input_list: pd.DataFrame, delimiter) -> pd.DataFrame:
+    ingredient_ids_list=[]
+    for row,idx in input_list.iterrows():
+        ingredient_list = string_to_list_of_ingredients(row['ingredient_list'], delimiter)
+        ingredient_ids_list.append(ingredient_list)
+    input_list["ingredient_ids"] = ingredient_ids_list
+    return input_list
+    
+def add_approval_tags(original_dataframe: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    """
+    args:
+        original_dataframe (pd.DataFrame): current drug list data frame
+        column_name (str): what to call the resulting column
+    returns:
+        new_dataframe (pd.DataFrame): drug list with approval tags
+    """
+    original_dataframe[column_name]=True
+    return original_dataframe
+
+#def build_list(input_data: pd.DataFrame, delimiters: list[str], exclusions: list[str], split_exclusions: list[str], id_params: dict) -> pd.DataFrame:
+    # data_import_params = {}
+    # drug_list_base = import_list(input_data, data_import_params)
+    # drug_list_with_combination_therapy_tags = tag_combination_therapies(drug_list_base, delimiters, exclusions)
+    # drug_list_with_ids = identify_drugs(drug_list_with_combination_therapy_tags, id_params)
+    # drug_list_with_ingredients = add_ingredients(drug_list_with_ids, delimiters)
+    # drug_list_with_ingredient_ids = add_ingredient_ids(drug_list_with_ingredients, ";")
+    
+    # drug_list_with_approval_tags = add_approval_tags(drug_list_with_ingredients, params['approval_tag_name'])
+    # drug_list_final = pd.DataFrame()
+    # return drug_list_final
+
