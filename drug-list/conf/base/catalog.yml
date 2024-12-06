@@ -1,9 +1,9 @@
 # ORANGE BOOK
-orange-book-products:
-  type: pandas.CSVDataset
-  filepath: data/01_raw/products.txt
-  load_args:
-    sep: '~'
+# orange-book-products:
+#   type: pandas.CSVDataset
+#   filepath: data/01_raw/products.txt
+#   load_args:
+#     sep: '~'
 
 fda_exclusions:
   type: pandas.ExcelDataset
@@ -37,7 +37,6 @@ ema_list:
   filepath: data/02_intermediate/ema_list.xlsx
 
 
-
 # PMDA
 pmda_raw_data_set:
   type: pandas.CSVDataset
@@ -61,6 +60,7 @@ pmda_list:
 ## ALL RAW DATA MUST BE REFORMATTED TO CONTAIN AT A MINIMUM
 ## THE FOLLOWING COLUMNS:
 ## "drug_name", "approval_date", 
+
 
 # FDA PURPLE BOOK
 fda_purple_book_raw_data_set:
@@ -89,11 +89,88 @@ purple_book_list_with_ingredients:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/purplebook-with-ingredients.xlsx
 
+purple_book_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook-with-ingredient-ids.xlsx
+
 purple_book_list:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/
+  filepath: data/02_intermediate/purple-book-list.xlsx
 
-# GRAS
+# FDA ORANGE BOOK
+orange-book-products:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/products.txt
+  load_args:
+    sep: '~'
+
+orange_book_list_standardized:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-standardized.xlsx
+
+orange_book_list_with_combination_therapy_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-combo-therapy-tags.xlsx
+
+orange_book_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-curies.xlsx
+
+orange_book_list_with_approval_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-approval-tags.xlsx
+
+orange_book_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-ingredients.xlsx
+
+orange_book_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-ingredient-ids.xlsx
+
+orange_book_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orange-book-list.xlsx
+
+# INDIAN DRUG APPROVALS
+indian_drug_approvals_raw_data_set:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/indian_drugs.csv
+
+indian_drugs_standardized:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/indian-drugs-standardized.xlsx
+
+india_list_with_combination_therapy_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-combo-therapy-tags.xlsx
+
+india_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-curies.xlsx
+
+india_list_with_approval_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-approval-tags.xlsx
+
+india_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-list-with-ingredients.xlsx
+
+india_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-ingredient-ids.xlsx
+
+india_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-list.xlsx
+
+
+
+
+
+
+  # GRAS
 gras_raw_data_set:
   type: pandas.CSVDataset
   filepath: data/01_raw/gras_raw_data.csv
@@ -101,6 +178,7 @@ gras_raw_data_set:
 gras_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/gras_list.xlsx
+
 
 # Merged Drug List
 drug_list:
@@ -117,3 +195,4 @@ drug_list_final:
   filepath: data/03_primary/drugList.tsv
   save_args:
     sep: "\t"
+

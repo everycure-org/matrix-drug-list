@@ -43,8 +43,6 @@ desalting_params:
     - LACTATE
     - DIPHOSPHATE
 
-
-
   basic_cations:
     - FERROUS
     - CALCIUM
@@ -90,7 +88,25 @@ split_exclusions_purplebook:
   - ""
 
 
+purplebook_drug_name_column: Proper Name
+purplebook_approval_date_column: Approval Date
 
+# INDIA
+india_drug_name_column: Drug Name
+india_approval_date_column: Date of Approval
+delimiters_india:
+  - " + "
+  - " ; "
+  - " and "
+split_exclusions_india:
+  - ""
+
+
+# ORANGE BOOK
+orangebook_drug_name_column: 
+delimiters_orangebook:
+  - " and "
+  - " ; "
 
 # NAME RESOLVER
 name_resolver_params:
@@ -134,10 +150,13 @@ enrichment_tags:
       prompt: Is this drug a drug which is primarily used to regulate glucose levels? Return TRUE or FALSE only
       temperature: 0.8
 
-# APPROVAL TAGS  
+# APPROVAL TAGS
+ 
 approval_tag_usa: "approved_usa"
 approval_tag_europe: "approved_eu"
 approval_tag_japan: "approved_japan"
+approval_tag_india: "approved_india"
+
 
 
   

@@ -797,14 +797,20 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
 ##### GENERAL LIST BUILDER HERE #########
 #########################################
 
+def remove_illegal_characters_openpyxl(input_list: pd.DataFrame):
+    return input_list.applymap(lambda x: x.encode('unicode_escape').
+                 decode('utf-8') if isinstance(x, str) else x)
 
-def create_standardized_columns_purplebook(df_in: pd.DataFrame) -> pd.DataFrame:
+
+def create_standardized_columns(df_in: pd.DataFrame, drug_name_column:str, approval_date_column:str) -> pd.DataFrame:
     df_in.rename(
-        columns={'Proper Name':'drug_name',
-                 'Approval Date':'approval_date'
+        columns={drug_name_column:'drug_name',
+                 approval_date_column:'approval_date',
                  },
         inplace=True
         )
+    # remove illegal unicode characters from list:
+    df_in = remove_illegal_characters_openpyxl(df_in)
     return df_in
 
 def is_combination_therapy(item: str, delimiters: list[str], exclusions: list[str]) -> bool:
@@ -834,7 +840,6 @@ def identify(name, params):
         resolvedLabel (list[str]): List of labels associated with respective resolvedName.
 
     """
-    #return [name], [name] #only for testing
     itemRequest = (params['url']+
                    params['service']+
                    '?string='+
@@ -888,6 +893,16 @@ def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
     input_list['curie_label']=labels
     return input_list
 
+def add_approval_tags(original_dataframe: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    """
+    args:
+        original_dataframe (pd.DataFrame): current drug list data frame
+        column_name (str): what to call the resulting column
+    returns:
+        new_dataframe (pd.DataFrame): drug list with approval tags
+    """
+    original_dataframe[column_name]=True
+    return original_dataframe
 
 def multi_split(inString, delims):
     result = [inString]
@@ -906,23 +921,75 @@ def add_ingredients(input_list: pd.DataFrame, delimiters: list[str]):
     input_list["ingredients_list"]=ingredients_list
     return input_list
 
-def add_ingredient_ids(input_list: pd.DataFrame, delimiter) -> pd.DataFrame:
+def string_to_list(input_string):
+    """
+    Convert a string representation of a list into an actual Python list of strings.
+    
+    Args:
+        input_string (str): String representation of a list (e.g., "['item1','item2','item3']")
+        
+    Returns:
+        list: A list of strings
+    
+    Example:
+        >>> string_to_list("['item1','item2','item3']")
+        ['item1', 'item2', 'item3']
+    """
+    cleaned_string = input_string.strip('[]')
+    items = [item.strip().strip("'").strip('"') for item in cleaned_string.split(',')]
+    items = [item for item in items if item]
+    return items
+
+def add_ingredient_ids(input_list: pd.DataFrame, nameres_params) -> pd.DataFrame:
+    cache = {}
     ingredient_ids_list=[]
-    for idx,row in input_list.iterrows():
-        ingredient_ids_list.append(identify(i) for i in row['ingredients_list'])
+    for idx,row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding ingredient IDs"):
+        curr_row_ingredient_ids = []
+        if not row['combination therapy']:
+            ingredient_ids_list.append(None)
+        else:
+            for ingredient in string_to_list(row['ingredients_list']):
+                print(f"identifying ingredient {ingredient}")
+                if ingredient in cache:
+                    curr_row_ingredient_ids.append(cache[ingredient])
+                else:
+                    curie,label = identify(ingredient, nameres_params)
+                    curr_row_ingredient_ids.append(curie)
+                    cache[ingredient]=curie
+            ingredient_ids_list.append(curr_row_ingredient_ids)   
     input_list["ingredient_ids"] = ingredient_ids_list
     return input_list
-    
-def add_approval_tags(original_dataframe: pd.DataFrame, column_name: str) -> pd.DataFrame:
-    """
-    args:
-        original_dataframe (pd.DataFrame): current drug list data frame
-        column_name (str): what to call the resulting column
-    returns:
-        new_dataframe (pd.DataFrame): drug list with approval tags
-    """
-    original_dataframe[column_name]=True
-    return original_dataframe
+
+def normalize(item: str):
+    if testing:
+        return ["test"], ["test"]
+    item_request = f"https://nodenormalization-sri.renci.org/1.5/get_normalized_nodes?curie={item}&conflate=true&drug_chemical_conflate=true&description=false&individual_types=false"    
+    success = False
+    failedCounts = 0
+    while not success:
+        try:
+            response = requests.get(item_request)
+            output = json.loads(response.text)
+            alternate_ids = output[item]['equivalent_identifiers']
+            returned_ids = list(item['identifier'] for item in alternate_ids)
+            success = True
+        except:
+            #print('name resolver error')
+            failedCounts += 1
+        if failedCounts >= 5:
+            return "Error"
+    return returned_ids 
+
+def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
+    alternate_ids = []
+    for idx, row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding alternate IDs from Node Normalizer"):
+        alternate_ids.append(normalize(row['curie']))
+
+    input_list['alternate_ids']=alternate_ids
+    return input_list
+
+
+
 
 #def build_list(input_data: pd.DataFrame, delimiters: list[str], exclusions: list[str], split_exclusions: list[str], id_params: dict) -> pd.DataFrame:
     # data_import_params = {}
