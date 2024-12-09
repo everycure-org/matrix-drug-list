@@ -13,9 +13,9 @@ fda_ob_split_exclusions:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/fda_ob_split_exclusions.xlsx
 
-orange_book_list:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/fda_ob_list.xlsx
+# orange_book_list:
+#   type: pandas.ExcelDataset
+#   filepath: data/02_intermediate/fda_ob_list.xlsx
 
 # EMA
 ema_raw_data_set:
@@ -32,9 +32,9 @@ ema_split_exclusions:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema_split_exclusions.xlsx
 
-ema_list:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/ema_list.xlsx
+# ema_list:
+#   type: pandas.ExcelDataset
+#   filepath: data/02_intermediate/ema_list.xlsx
 
 
 # PMDA
@@ -124,6 +124,10 @@ orange_book_list_with_ingredients:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orangebook-with-ingredients.xlsx
 
+orange_book_list_with_unlisted_single_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-unlisted-single-ingredients.xlsx
+
 orange_book_list_with_ingredient_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orangebook-with-ingredient-ids.xlsx
@@ -131,6 +135,55 @@ orange_book_list_with_ingredient_ids:
 orange_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orange-book-list.xlsx
+
+# EMA
+ema-products:
+  type: pandas.ExcelDataset
+  filepath: data/01_raw/EPAR_table_4.xlsx
+  load_args:
+    skiprows: [0,1,2,3,4,5,6,7]
+
+ema-preprocessed:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-preprocessed.xlsx
+
+ema-with-exclusions-removed:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-exclusions-removed.xlsx
+
+ema_list_standardized:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-standardized.xlsx
+
+ema_list_with_combination_therapy_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-combo-therapy-tags.xlsx
+
+ema_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-curies.xlsx
+
+ema_list_with_approval_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-approval-tags.xlsx
+
+ema_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-ingredients.xlsx
+
+ema_list_with_unlisted_single_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-unlisted-single-ingredients.xlsx
+
+ema_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-ingredient-ids.xlsx
+
+ema_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-list.xlsx
+
+
 
 # INDIAN DRUG APPROVALS
 indian_drug_approvals_raw_data_set:

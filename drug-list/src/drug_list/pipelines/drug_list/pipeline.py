@@ -4,32 +4,32 @@ from . import nodes
 def create_pipeline(**kwargs) -> Pipeline:
     return pipeline(
         [
-            node(
-                func=nodes.generate_ob_list,
-                inputs=
-                        ["orange-book-products", 
-                        "fda_exclusions", 
-                        "fda_ob_split_exclusions",
-                        "params:desalting_params",
-                        "params:name_resolver_params",
-                        "params:approval_tag_usa"],
+            # node(
+            #     func=nodes.generate_ob_list,
+            #     inputs=
+            #             ["orange-book-products", 
+            #             "fda_exclusions", 
+            #             "fda_ob_split_exclusions",
+            #             "params:desalting_params",
+            #             "params:name_resolver_params",
+            #             "params:approval_tag_usa"],
                          
-                outputs= "orange_book_list",
-                name = "generate-orange-book-list-node"
-            ),
+            #     outputs= "orange_book_list",
+            #     name = "generate-orange-book-list-node"
+            # ),
             
-            node(
-                func=nodes.generate_ema_list,
-                inputs=
-                        ["ema_raw_data_set", 
-                        "ema_exclusions", 
-                        "ema_split_exclusions",
-                        "params:desalting_params",
-                        "params:name_resolver_params",
-                        "params:approval_tag_europe"],  
-                outputs= "ema_list",
-                name = "generate-ema-list-node"
-            ),
+            # node(
+            #     func=nodes.generate_ema_list,
+            #     inputs=
+            #             ["ema_raw_data_set", 
+            #             "ema_exclusions", 
+            #             "ema_split_exclusions",
+            #             "params:desalting_params",
+            #             "params:name_resolver_params",
+            #             "params:approval_tag_europe"],  
+            #     outputs= "ema_list",
+            #     name = "generate-ema-list-node"
+            # ),
 
             node(
                 func=nodes.generate_pmda_list,
@@ -122,6 +122,104 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'add-alternate-ids-purplebook'
             ),
 
+
+
+
+            # EMA BUILD
+            node(
+                func = nodes.preprocess_ema,
+                inputs=[
+                    'ema-products',
+                ],
+                outputs = "ema-preprocessed",
+                name = "preprocess-ema",
+            ),
+            node(
+                func = nodes.remove_manually_excluded_drugs,
+                inputs=[
+                    'ema-preprocessed',
+                    'params:exclusions_ema',
+                    'params:ema_drug_name_column',
+                ],
+                outputs = "ema-with-exclusions-removed",
+                name = "remove-manual-exclusions-ema",
+            ),
+            node(
+                func=nodes.create_standardized_columns,
+                inputs=[
+                    'ema-with-exclusions-removed',
+                    'params:ema_drug_name_column',
+                    'params:ema_approval_date_column',
+                ],
+                outputs = 'ema_list_standardized',
+                name = 'standardize-ema'
+            ),
+            node(
+                func=nodes.tag_combination_therapies,
+                inputs=[
+                    'ema_list_standardized',
+                    'params:delimiters_ema',
+                    'params:split_exclusions_ema',
+                ],
+                outputs = 'ema_list_with_combination_therapy_tags',
+                name = 'tag-combination-therapies-ema'
+            ),
+
+            node(
+                func=nodes.add_approval_tags,
+                inputs=[
+                    'ema_list_with_combination_therapy_tags',
+                    'params:approval_tag_usa'
+                ],
+                outputs = 'ema_list_with_approval_tags',
+                name = 'add-approval-tags-ema'
+            ),
+            node(
+                func=nodes.add_ingredients,
+                inputs=[
+                    'ema_list_with_approval_tags',
+                    'params:delimiters_ema'
+                ],
+                outputs = 'ema_list_with_ingredients',
+                name = 'add-ingredients-ema'
+            ),
+            node(
+                func=nodes.add_unlisted_single_ingredients,
+                inputs=[
+                    'ema_list_with_ingredients',
+                ],
+                outputs = 'ema_list_with_unlisted_single_ingredients',
+                name = 'add-unlisted-single-ingredients-ema'
+            ),
+            node(
+                func=nodes.identify_drugs,
+                inputs=[
+                    'ema_list_with_unlisted_single_ingredients',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'ema_list_with_curies',
+                name = 'get-curies-ema'
+            ),
+            node(
+                func=nodes.add_ingredient_ids,
+                inputs=[
+                    'ema_list_with_curies',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'ema_list_with_ingredient_ids',
+                name = 'add-ingredient-ids-ema'
+            ),
+            node(
+                func=nodes.add_alternate_ids,
+                inputs=[
+                    'ema_list_with_ingredient_ids'
+                ],
+                outputs = 'ema_list',
+                name = 'add-alternate-ids-ema'
+            ),
+
+
+
             # ORANGE BOOK BUILD
             node(
                 func=nodes.create_standardized_columns,
@@ -140,22 +238,14 @@ def create_pipeline(**kwargs) -> Pipeline:
                     'params:delimiters_orangebook',
                     'params:split_exclusions_orangebook',
                 ],
-                outputs = 'purple_book_list_with_combination_therapy_tags',
+                outputs = 'orange_book_list_with_combination_therapy_tags',
                 name = 'tag-combination-therapies-orangebook'
             ),
-            node(
-                func=nodes.identify_drugs,
-                inputs=[
-                    'orange_book_list_with_combination_therapy_tags',
-                    'params:name_resolver_params'
-                ],
-                outputs = 'orange_book_list_with_curies',
-                name = 'get-curies-orangebook'
-            ),
+
             node(
                 func=nodes.add_approval_tags,
                 inputs=[
-                    'orange_book_list_with_curies',
+                    'orange_book_list_with_combination_therapy_tags',
                     'params:approval_tag_usa'
                 ],
                 outputs = 'orange_book_list_with_approval_tags',
@@ -171,13 +261,30 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'add-ingredients-orangebook'
             ),
             node(
-                func=nodes.add_ingredient_ids,
+                func=nodes.add_unlisted_single_ingredients,
                 inputs=[
                     'orange_book_list_with_ingredients',
+                ],
+                outputs = 'orange_book_list_with_unlisted_single_ingredients',
+                name = 'add-unlisted-single-ingredients-orangebook'
+            ),
+            node(
+                func=nodes.identify_drugs,
+                inputs=[
+                    'orange_book_list_with_unlisted_single_ingredients',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'orange_book_list_with_curies',
+                name = 'get-curies-orangebook'
+            ),
+            node(
+                func=nodes.add_ingredient_ids,
+                inputs=[
+                    'orange_book_list_with_curies',
                     'params:name_resolver_params'
                 ],
                 outputs = 'orange_book_list_with_ingredient_ids',
-                name = 'add-ingredient-ids-purplebook'
+                name = 'add-ingredient-ids-orangebook'
             ),
             node(
                 func=nodes.add_alternate_ids,
@@ -187,6 +294,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'orange_book_list',
                 name = 'add-alternate-ids-orangebook'
             ),
+
+
 
 
             # INDIAN APPROVAL LIST
@@ -254,6 +363,10 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'india_list',
                 name = 'add-alternate-ids-india'
             ),
+
+
+
+
 
 
             # DRUG LIST CATEGORIZATION TAGS

@@ -113,7 +113,6 @@ def getCombinationTherapiesAndSingleTherapiesLists(orangebook: pd.DataFrame, exc
         list: single therapies
 
     """
-
     obCombinationTherapies = []
     obSingleTherapies = []
     ingredientList = set(list(orangebook.Ingredient))
@@ -796,6 +795,28 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
 #########################################
 ##### GENERAL LIST BUILDER HERE #########
 #########################################
+def remove_manually_excluded_drugs(list_in: pd.DataFrame, exclusions: list[str], drug_name_column: str) -> pd.DataFrame:
+    indices_to_drop = []
+    for idx, row in list_in.iterrows():
+        if row[drug_name_column] in exclusions:
+            indices_to_drop.append(idx)
+    return list_in.drop(indices_to_drop)
+
+
+def preprocess_ema(rawdata: pd.DataFrame) -> pd.DataFrame:
+    """
+    Args:
+        rawdata(pd.DataFrame): raw FDA data
+        exclusions(pd.DataFrame): manually curated list of exclusions from FDA list.
+    Returns:
+        list[str]: a raw list of all of the drugs in the FDA book
+    """
+    indices_to_drop = []
+    for idx, row in rawdata.iterrows():
+        if (row['Category'] != "Human") or (row['Authorisation status'] != "Authorised"):
+            indices_to_drop.append(idx)
+    new_df = rawdata.drop(indices_to_drop)
+    return new_df
 
 def remove_illegal_characters_openpyxl(input_list: pd.DataFrame):
     return input_list.applymap(lambda x: x.encode('unicode_escape').
@@ -814,6 +835,8 @@ def create_standardized_columns(df_in: pd.DataFrame, drug_name_column:str, appro
     return df_in
 
 def is_combination_therapy(item: str, delimiters: list[str], exclusions: list[str]) -> bool:
+    if type(item)==float:
+        return False
     if item in exclusions:
         return False
     for i in delimiters:
@@ -825,7 +848,7 @@ def tag_combination_therapies(inputList: pd.DataFrame, delimiters: list[str], ex
     combination_therapy = []
     for idx, row in tqdm(inputList.iterrows(), total=len(inputList)):
         combination_therapy.append(is_combination_therapy(row['drug_name'], delimiters, exclusions))
-    inputList['combination therapy'] = combination_therapy
+    inputList['combination_therapy'] = combination_therapy
     return inputList
 
 
@@ -840,6 +863,9 @@ def identify(name, params):
         resolvedLabel (list[str]): List of labels associated with respective resolvedName.
 
     """
+    if type(name) == float:
+        return ['error'], ['error']
+    
     itemRequest = (params['url']+
                    params['service']+
                    '?string='+
@@ -912,13 +938,32 @@ def multi_split(inString, delims):
 
 def add_ingredients(input_list: pd.DataFrame, delimiters: list[str]):
     ingredients_list = []
-    for idx,row in input_list.iterrows():
-        if row['combination therapy']==True:
+    for idx,row in tqdm(input_list.iterrows(), total=len(input_list)):
+        if row['combination_therapy']==True:
             ingredients_list.append(multi_split(row['drug_name'], delimiters))
         else:
             ingredients_list.append(None)
 
     input_list["ingredients_list"]=ingredients_list
+    return input_list
+
+def add_row (original_list: pd.DataFrame, columns: dict) -> pd.DataFrame:
+    original_list = pd.concat([original_list, pd.DataFrame(columns, index = [0])], ignore_index=True)
+    return original_list
+
+def add_unlisted_single_ingredients(input_list: pd.DataFrame) -> pd.DataFrame:
+    ingList = list(input_list['drug_name'])
+    for idx, row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding unlisted single therapies"):
+        if row['combination_therapy']==True:
+            for item in string_to_list(row['ingredients_list']):
+                if item not in ingList:
+                    new_columns = {
+                        'drug_name':item, 
+                        'approval_date':row['approval_date'],
+                        'combination_therapy':False
+                        }
+                    input_list = add_row(input_list, new_columns)
+                    ingList = list(input_list['drug_name'])
     return input_list
 
 def string_to_list(input_string):
@@ -945,11 +990,10 @@ def add_ingredient_ids(input_list: pd.DataFrame, nameres_params) -> pd.DataFrame
     ingredient_ids_list=[]
     for idx,row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding ingredient IDs"):
         curr_row_ingredient_ids = []
-        if not row['combination therapy']:
+        if not row['combination_therapy']:
             ingredient_ids_list.append(None)
         else:
             for ingredient in string_to_list(row['ingredients_list']):
-                print(f"identifying ingredient {ingredient}")
                 if ingredient in cache:
                     curr_row_ingredient_ids.append(cache[ingredient])
                 else:
@@ -981,9 +1025,16 @@ def normalize(item: str):
     return returned_ids 
 
 def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
+    cache = {}
     alternate_ids = []
     for idx, row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding alternate IDs from Node Normalizer"):
-        alternate_ids.append(normalize(row['curie']))
+        curie = row['curie']
+        if curie in cache:
+            alternate_ids.append(cache[curie])
+        else:
+            item_alternate_ids = normalize(curie)
+            cache[curie]=item_alternate_ids
+            alternate_ids.append(item_alternate_ids)
 
     input_list['alternate_ids']=alternate_ids
     return input_list
