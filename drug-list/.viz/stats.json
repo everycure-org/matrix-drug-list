@@ -1,1 +1,1 @@
-{"ema_list_with_curies": {"rows": 1538, "columns": 35, "file_size": 563989}, "ema_list_with_ingredient_ids": {"rows": 1538, "columns": 36, "file_size": 572996}}
+{"drug_list": {"rows": 3883, "columns": 13, "file_size": 15067804}, "drug_list_with_smiles": {"rows": 3883, "columns": 14, "file_size": 1272154}}

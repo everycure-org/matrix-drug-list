@@ -50,9 +50,9 @@ pmda_split_exclusions:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/pmda_split_exclusions.xlsx
 
-pmda_list:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/pmda_list.xlsx
+# pmda_list:
+#   type: pandas.ExcelDataset
+#   filepath: data/02_intermediate/pmda_list.xlsx
 
 
 
@@ -184,6 +184,50 @@ ema_list:
   filepath: data/02_intermediate/ema/ema-list.xlsx
 
 
+# PMDA
+pmda-products:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/pmda_approvals.csv
+
+pmda-preprocessed:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-preprocessed.xlsx
+
+pmda-with-exclusions-removed:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-exclusions-removed.xlsx
+
+pmda_list_standardized:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-standardized.xlsx
+
+pmda_list_with_combination_therapy_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-combo-therapy-tags.xlsx
+
+pmda_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-curies.xlsx
+
+pmda_list_with_approval_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-approval-tags.xlsx
+
+pmda_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-ingredients.xlsx
+
+pmda_list_with_unlisted_single_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-unlisted-single-ingredients.xlsx
+
+pmda_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-with-ingredient-ids.xlsx
+
+pmda_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-list.xlsx
 
 # INDIAN DRUG APPROVALS
 indian_drug_approvals_raw_data_set:
@@ -249,3 +293,6 @@ drug_list_final:
   save_args:
     sep: "\t"
 
+drug_list_with_smiles:
+  type: pandas.ExcelDataset
+  filepath: data/03_primary/drug_list_with_smiles.xlsx

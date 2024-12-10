@@ -8,7 +8,7 @@ from typing import List
 from tqdm import tqdm
 import json
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 from openai import OpenAI
 
 testing = False
@@ -663,6 +663,49 @@ def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
 
 
 
+def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
+    """
+    Retrieve the SMILES string for a chemical compound using its PubChem ID (CID).
+    
+    Args:
+        pubchem_id (int): The PubChem Compound ID (CID)
+    
+    Returns:
+        Optional[str]: The SMILES string if found, None if not found or error occurs
+        
+    Raises:
+        ValueError: If the pubchem_id is not a positive integer
+        requests.RequestException: If there's an error with the API request
+    """
+    if not isinstance(pubchem_id, int) or pubchem_id <= 0:
+        raise ValueError("PubChem ID must be a positive integer")
+
+    # PubChem REST API endpoint
+    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+    endpoint = f"{base_url}/compound/cid/{pubchem_id}/property/IsomericSMILES/JSON"
+
+    try:
+        # Make the API request
+        response = requests.get(endpoint)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Parse the JSON response
+        data = response.json()
+        
+        # Extract the SMILES string
+        smiles = data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
+        return smiles
+        
+    except requests.RequestException as e:
+        print(f"Error making API request: {e}")
+        return None
+    except (KeyError, json.JSONDecodeError) as e:
+        print(f"Error parsing response: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
 
 
 
@@ -1039,7 +1082,27 @@ def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
     input_list['alternate_ids']=alternate_ids
     return input_list
 
+def add_SMILES_strings(in_list: pd.DataFrame) -> pd.DataFrame:
+    smiles_strings = []
+    for idx, row in tqdm(in_list.iterrows(), total = len(in_list), desc="adding SMILES strings through PUBCHEM"):
+        
+        if "|" in row['Equivalent_IDs']:
+            smiles_strings.append(None)
+        else:
+            not_found = True
+            for id in string_to_list(row['Equivalent_IDs']):
+                if "PUBCHEM" in id and not_found:
+                    #print(id)
+                    not_found = False
+                    pc_index = id.replace("PUBCHEM.COMPOUND:","")
+                    #print(f"found pubchem compound {pc_index}")
+                    smiles_strings.append(get_smiles_from_pubchem(int(pc_index)))
+                    continue
+            if not_found:
+                smiles_strings.append(None)
 
+    in_list['SMILES_string']=smiles_strings
+    return in_list
 
 
 #def build_list(input_data: pd.DataFrame, delimiters: list[str], exclusions: list[str], split_exclusions: list[str], id_params: dict) -> pd.DataFrame:

@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/marcello-deluca/Research/ARPA-H/matrix-repos/matrix-drug-list/drug-list/mlruns/538647244709008029/32a4ab5a5bfc40239bc5c8f198978934/artifacts
+end_time: 1733794994711
+entry_point_name: ''
+experiment_id: '538647244709008029'
+lifecycle_stage: active
+run_id: 32a4ab5a5bfc40239bc5c8f198978934
+run_name: __default__
+run_uuid: 32a4ab5a5bfc40239bc5c8f198978934
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1733794994520
+status: 4
+tags: []
+user_id: marcello-deluca
