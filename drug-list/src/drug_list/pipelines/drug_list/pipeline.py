@@ -2,6 +2,7 @@ from kedro.pipeline import Pipeline, pipeline, node
 from . import nodes
 
 def create_pipeline(**kwargs) -> Pipeline:
+    
     return pipeline(
         [
             # node(
@@ -459,6 +460,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'drug-list-enrichment'
             ),
             
+            # ADD SMILES STRINGS WHEN APPLICABLE
             node(
                 func=nodes.add_SMILES_strings,
                 inputs=[

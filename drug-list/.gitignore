@@ -9,7 +9,7 @@ conf/local/**
 conf/**/*credentials*
 
 # ignore everything in the following folders
-data/**
+!data/**
 
 # except their sub-folders
 !data/**/
@@ -19,6 +19,7 @@ data/**
 
 # keep also the example dataset
 !data/01_raw/*
+!data/02_intermediate/*
 !data/03_primary/*
 
 ##########################

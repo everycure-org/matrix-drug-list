@@ -938,7 +938,7 @@ def identify(name, params):
             failedCounts += 1
         
         if failedCounts >= 5:
-            return "Error", "Error"
+            return ["Error"], ["Error"]
     return resolvedName[0], resolvedLabel[0]
 
 def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
