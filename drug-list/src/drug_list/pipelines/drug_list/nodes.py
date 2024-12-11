@@ -8,7 +8,7 @@ from typing import List
 from tqdm import tqdm
 import json
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 from openai import OpenAI
 
 testing = False
@@ -1040,6 +1040,94 @@ def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
     return input_list
 
 
+
+
+
+def query_ollama(
+    prompt: str,
+    model: str = "hf.co/bartowski/Llama-3.3-70B-Instruct-GGUF:IQ2_S",
+    system_prompt: Optional[str] = None,
+    temperature: float = 0.7,
+    max_tokens: Optional[int] = None,
+    top_p: Optional[float] = None,
+    top_k: Optional[int] = None,
+    url: str = "http://localhost:11434"
+) -> Dict[str, Any]:
+    """
+    Send a prompt to a locally running Ollama model and return its response.
+    
+    Args:
+        prompt (str): The main prompt/question to send to the model
+        model (str): Name of the model to use (default is Llama-3.3-70B)
+        system_prompt (str, optional): System prompt to set context/behavior
+        temperature (float): Controls randomness (0.0 to 1.0)
+        max_tokens (int, optional): Maximum number of tokens to generate
+        top_p (float, optional): Nucleus sampling parameter
+        top_k (int, optional): Top-k sampling parameter
+        url (str): Base URL for the Ollama API
+        
+    Returns:
+        Dict[str, Any]: Response from the model containing generated text and metadata
+        
+    Raises:
+        requests.exceptions.RequestException: If API request fails
+        json.JSONDecodeError: If response parsing fails
+    """
+    
+    # Construct request payload
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": temperature
+        }
+    }
+    
+    # Add optional parameters if provided
+    if system_prompt:
+        payload["system"] = system_prompt
+    if max_tokens:
+        payload["options"]["num_predict"] = max_tokens
+    if top_p:
+        payload["options"]["top_p"] = top_p
+    if top_k:
+        payload["options"]["top_k"] = top_k
+
+    try:
+        # Send POST request to Ollama API
+        response = requests.post(
+            f"{url.rstrip('/')}/api/generate",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        
+        return response.json()
+        
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Failed to communicate with Ollama API: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse Ollama API response: {str(e)}")
+
+# Example usage:
+if __name__ == "__main__":
+    try:
+        # Basic usage
+        response = query_ollama("What is the capital of France?")
+        print("Basic Response:", response["response"])
+        
+        # Advanced usage with parameters
+        response = query_ollama(
+            prompt="Write a short poem about AI",
+            system_prompt="You are a creative poetry assistant",
+            temperature=0.9,
+            max_tokens=100
+        )
+        print("\nAdvanced Response:", response["response"])
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
 
 
 #def build_list(input_data: pd.DataFrame, delimiters: list[str], exclusions: list[str], split_exclusions: list[str], id_params: dict) -> pd.DataFrame:
