@@ -19,6 +19,7 @@ data/**
 
 # keep also the example dataset
 !data/01_raw/*
+!data/02_intermediate/*
 !data/03_primary/*
 
 ##########################
