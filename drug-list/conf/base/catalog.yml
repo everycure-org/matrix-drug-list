@@ -54,12 +54,15 @@ pmda_split_exclusions:
 #   type: pandas.ExcelDataset
 #   filepath: data/02_intermediate/pmda_list.xlsx
 
-
-
 ##############################################################
 ## ALL RAW DATA MUST BE REFORMATTED TO CONTAIN AT A MINIMUM
 ## THE FOLLOWING COLUMNS:
 ## "drug_name", "approval_date", 
+
+
+
+
+
 
 
 # FDA PURPLE BOOK
@@ -71,31 +74,43 @@ fda_purple_book_raw_data_set:
 
 purple_book_list_standardized:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-standardized.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-standardized.xlsx
+
+purple_book_list_no_discn:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook/purplebook-no-discn.xlsx
 
 purple_book_list_with_combination_therapy_tags:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-with-combo-therapy-tags.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-with-combo-therapy-tags.xlsx
 
 purple_book_list_with_curies:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-with-curies.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-with-curies.xlsx
 
 purple_book_list_with_approval_tags:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-with-approval-tags.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-with-approval-tags.xlsx
 
 purple_book_list_with_ingredients:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-with-ingredients.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-with-ingredients.xlsx
 
 purple_book_list_with_ingredient_ids:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purplebook-with-ingredient-ids.xlsx
+  filepath: data/02_intermediate/purplebook/purplebook-with-ingredient-ids.xlsx
 
 purple_book_list:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/purple-book-list.xlsx
+  filepath: data/02_intermediate/purplebook/purple-book-list.xlsx
+
+purple_book_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook/purple-book-list-filtered.xlsx
+
+
+
+
 
 # FDA ORANGE BOOK
 orange-book-products:
@@ -107,6 +122,14 @@ orange-book-products:
 orange_book_list_standardized:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orangebook-standardized.xlsx
+
+orange_book_list_no_discn:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-no-discn.xlsx
+
+orange_book_list_desalted:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-list-desalted.xlsx
 
 orange_book_list_with_combination_therapy_tags:
   type: pandas.ExcelDataset
@@ -135,6 +158,14 @@ orange_book_list_with_ingredient_ids:
 orange_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orange-book-list.xlsx
+
+
+orange_book_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orange-book-list-filtered.xlsx
+
+
+
 
 # EMA
 ema-products:
@@ -179,9 +210,19 @@ ema_list_with_ingredient_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema/ema-with-ingredient-ids.xlsx
 
+ema_list_desalted:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-list-desalted.xlsx
+
 ema_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema/ema-list.xlsx
+
+ema_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-list-filtered.xlsx
+
+
 
 
 # PMDA
@@ -200,6 +241,14 @@ pmda-with-exclusions-removed:
 pmda_list_standardized:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/pmda/pmda-standardized.xlsx
+
+pmda_list_names_reformatted:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-reformatted-names.xlsx
+
+pmda_list_improved_names:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-improved-names.xlsx
 
 pmda_list_with_combination_therapy_tags:
   type: pandas.ExcelDataset
@@ -228,6 +277,15 @@ pmda_list_with_ingredient_ids:
 pmda_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/pmda/pmda-list.xlsx
+
+pmda_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-list-filtered.xlsx
+
+
+
+
+
 
 # INDIAN DRUG APPROVALS
 indian_drug_approvals_raw_data_set:
@@ -275,13 +333,10 @@ gras_list:
 
 
 # Merged Drug List
-drug_list:
-  type: pandas.CSVDataset
-  filepath: data/03_primary/merged_drugList.tsv
-  save_args:
-    sep: "\t"
-  load_args:
-    sep: "\t"
+drug_list_merged:
+  type: pandas.ExcelDataset
+  filepath: data/03_primary/merged_drugList.xlsx
+
 
 # Post-enrichment final list
 drug_list_final:
@@ -293,3 +348,5 @@ drug_list_final:
 drug_list_with_smiles:
   type: pandas.ExcelDataset
   filepath: data/03_primary/drug_list_with_smiles.xlsx
+
+

@@ -10,25 +10,11 @@ import json
 import os
 from typing import List, Dict, Optional, Any
 from openai import OpenAI
+import numpy as np
 
 testing = False
 limit = 1000 # limit for testing full pipeline with limited number of names per list
 
-def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
-    """
-    Args: 
-        curieList (list[str]): list of Curie IDs
-        labelList (list[str]): list of labels for respective Curie IDs
-
-    Returns:
-        tuple: first Curie ID that is in RXCUI and associated label, or just first curie and label if no RXCUI.
-
-    """
-
-    for idx, item in enumerate(curieList):
-        if "RXCUI" in item:
-            return item, labelList[idx]
-    return curieList[0], labelList[0]           
 
 def Normalize(item: str):
     if testing:
@@ -130,76 +116,7 @@ def isCombinationTherapy(item: str, exclusions: list[str]) -> bool:
     return False
 
 
-def getAllStatuses(orangebook: pd.DataFrame, item: str) -> list[str]:
-    """
-    Args:
-        orangebook (pd.DataFrame): orange book raw data
-        item (str): name of the drug whose statuses are to be returned
 
-    Returns:
-        list[str]: availability status of all drug formulations for named drug in the United States
-
-    """
-
-    indices = [i for i, x in enumerate(orangebook['Ingredient']) if x == item]
-    return list(orangebook['Type'][indices])
-
-
-def getMostPermissiveStatus(statusList: list[str]) -> str:
-    """
-    Args:
-        statusList (list[str]): list of statuses for a particular chemical entity
-
-    Returns:
-        str: The most permissive availability status for the chemical entity in the US (over the counter > RX > DISCN) or "UNSURE" if not clear.
-
-    """
-    if "OTC" in statusList:
-        return "OTC"
-    elif "RX" in statusList:
-        return "RX"
-    elif "DISCN" in statusList:
-        return "DISCONTINUED"
-    return "UNSURE"
-
-
-def isBasicSaltOrMetalOxide(inString: str, desalting_params: dict) -> bool:
-    """
-    Args:
-        inString (str): name of drug
-        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
-    Returns:
-        bool: if the drug is a simple salt or metal oxide (sodium chloride, potassium phosphate, etc.), return TRUE. Otherwise, return FALSE
-    """
-
-    components = inString.strip().split()
-    for item in components:
-        item = item.replace(';', '').replace(',','')
-        if not item in desalting_params['basic_cations'] and not item in desalting_params['basic_anions'] and not item in desalting_params['other_identifiers']:
-            return False 
-    return True
-
-
-def removeCationsAnionsAndBasicTerms(ingredientString, desalting_params):
-    """
-    Args:
-        ingredientString (str): name of drug ingredient
-        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
-    Returns:
-        str: cleaned ingredient name with salts removed. Ideally this will be just the active moiety. The full salt name is returned if it is
-             a simple salt, e.g. sodium chloride or potassium phosphate.
-    """
-    if not isBasicSaltOrMetalOxide(ingredientString, desalting_params):
-        components = ingredientString.strip().split()
-        for ind,i in enumerate(components):
-            if i in desalting_params['basic_anions'] or i in desalting_params['basic_cations'] or i in desalting_params['other_identifiers']:
-                components[ind] = ''
-        newString = ''
-        for i in components:
-            newString = newString + i + " "
-        newString = newString[:-1]
-        return newString
-    return ingredientString.strip()
 
 
 def split_therapy_fda(combination_therapy_name):
@@ -246,7 +163,6 @@ def add_approval_tags(original_dataframe: pd.DataFrame, column_name: str) -> pd.
     return original_dataframe
 
 def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, rawdata, split_exclusions, approval_tags_name ) -> pd.DataFrame:
-    
     Approved_USA, combination_therapy, therapyName, name_in_orange_book, available_USA, curie_ID, curie_label, ingredient_curies = ([] for i in range(8))
     for index, item in tqdm(enumerate(list(drugList)), total=len(drugList)):
         if not testing or testing and index < limit:
@@ -293,8 +209,7 @@ def generate_ob_df(drugList: list[str], desalting_params, name_resolver_params, 
                         'Equivalent_IDs': equiv_ids,
                         })
 
-    data = add_approval_tags(data, approval_tags_name)
-    
+    data = add_approval_tags(data, approval_tags_name) 
     return data
 
 
@@ -427,7 +342,6 @@ def generate_ema_df(drugList: list[str], split_exclusions: list[str], desalting_
                      })
 
     data = add_approval_tags(data, approval_tags_name)
-
     return data
 
 
@@ -532,7 +446,6 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
                 curie_label.append(label[0]) #6
                 ingredient_curies.append("NA") #7
     equiv_ids = get_equivalent_ids(curie_ID)
-
     data = pd.DataFrame({'single_ID':curie_ID,
                         'ID_Label':curie_label,
                         'Name_PMDA':name_in_pmda_list,
@@ -543,7 +456,6 @@ def generate_pmda_df(drugList: pd.DataFrame, split_exclusions: pd.DataFrame, des
                         })
 
     data = add_approval_tags(data, approval_tags_name)
-
     return data
 
 
@@ -561,7 +473,9 @@ def build_drug_list(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: p
 
 
 def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.DataFrame,):
-    df1 = pd.merge(ema_list, pmda_list, on="single_ID", how="outer")
+    df1 = pd.merge(ema_list, pmda_list, on="curie", how="outer")
+    return df1
+
     df1 = df1.loc[:, ~df1.columns.str.contains('^Unnamed')]
     df1 = merge_columns('Therapy_Name_x', 'Therapy_Name_y', df1, 'Therapy_Name')
     df1 = merge_columns('ID_Label_x', 'ID_Label_y', df1, 'ID_Label')
@@ -601,8 +515,8 @@ def merge_lists(fda_list: pd.DataFrame, ema_list: pd.DataFrame, pmda_list: pd.Da
 
 def merge_columns (name1, name2, df, newname):
     df[newname]=df.apply(lambda x:'%s|%s' % (x[name1],x[name2]),axis=1)
-    df.drop(name1,axis=1,inplace=True)
-    df.drop(name2, axis=1,inplace=True)
+    df.drop(name1, axis=1, inplace=True)
+    df.drop(name2, axis=1, inplace=True)
 
     for idx, row in df.iterrows():
         if 'nan' in row[newname]:
@@ -620,7 +534,9 @@ def merge_identical_subcolumns(colname, df, delimiter):
 
     return df
 
-def generate_tag(drug_list:List, model_params:Dict)-> List:
+
+
+def generate_tag_openai(drug_list:List, model_params:Dict)-> List:
     """Generates tags based on provided prompts and params through OpenAI API call.
     
     Args:
@@ -644,67 +560,7 @@ def generate_tag(drug_list:List, model_params:Dict)-> List:
         tag_list.append(output.choices[0].message.content)
     return tag_list
 
-def enrich_drug_list(drug_list:List, params:Dict)-> pd.DataFrame:
-    """Node enriching existing drug list with llm-generated tags.
-    
-    Args:
-        drug_list: pd.DataFrame - merged drug_list with drug names column that will be used for tag generation
-        params: Dict - parameters dictionary specifying tag names, column names, and model params
-    Returns
-        pd.DataFrame with x new tag columns (where x corresponds to number of tags specified in params)
-    """
-    for tag in params.keys():
-        print(f"applying tag: \'{tag}\' to drug list")
-        input_col = params[tag].get('input_col')
-        output_col = params[tag].get('output_col')
-        model_params = params[tag].get('model_params')
-        drug_list[output_col] = generate_tag(drug_list[input_col], model_params)
-    return drug_list
 
-
-
-def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
-    """
-    Retrieve the SMILES string for a chemical compound using its PubChem ID (CID).
-    
-    Args:
-        pubchem_id (int): The PubChem Compound ID (CID)
-    
-    Returns:
-        Optional[str]: The SMILES string if found, None if not found or error occurs
-        
-    Raises:
-        ValueError: If the pubchem_id is not a positive integer
-        requests.RequestException: If there's an error with the API request
-    """
-    if not isinstance(pubchem_id, int) or pubchem_id <= 0:
-        raise ValueError("PubChem ID must be a positive integer")
-
-    # PubChem REST API endpoint
-    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-    endpoint = f"{base_url}/compound/cid/{pubchem_id}/property/IsomericSMILES/JSON"
-
-    try:
-        # Make the API request
-        response = requests.get(endpoint)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        
-        # Parse the JSON response
-        data = response.json()
-        
-        # Extract the SMILES string
-        smiles = data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
-        return smiles
-        
-    except requests.RequestException as e:
-        print(f"Error making API request: {e}")
-        return None
-    except (KeyError, json.JSONDecodeError) as e:
-        print(f"Error parsing response: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return None
 
 
 
@@ -838,7 +694,99 @@ def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
 #########################################
 ##### GENERAL LIST BUILDER HERE #########
 #########################################
+
+def drop_discontinued_drugs(drug_list: pd.DataFrame, column_name: str, discontinued_string: str):
+    indices_to_drop = []
+    for idx, row in tqdm(drug_list.iterrows(), total=len(drug_list),desc="dropping discontinued drugs"):
+        if row[column_name]==discontinued_string:
+            indices_to_drop.append(idx)
+        
+    return drug_list.drop(indices_to_drop).drop_duplicates(subset=['drug_name'])
+
+
+def getAllStatuses(orangebook: pd.DataFrame, item: str) -> list[str]:
+    """
+    Args:
+        orangebook (pd.DataFrame): orange book raw data
+        item (str): name of the drug whose statuses are to be returned
+
+    Returns:
+        list[str]: availability status of all drug formulations for named drug in the United States
+
+    """
+
+    indices = [i for i, x in enumerate(orangebook['Ingredient']) if x == item]
+    return list(orangebook['Type'][indices])
+
+
+def getMostPermissiveStatus(statusList: list[str]) -> str:
+    """
+    Args:
+        statusList (list[str]): list of statuses for a particular chemical entity
+
+    Returns:
+        str: The most permissive availability status for the chemical entity in the US (over the counter > RX > DISCN) or "UNSURE" if not clear.
+
+    """
+    if "OTC" in statusList:
+        return "OTC"
+    elif "RX" in statusList:
+        return "RX"
+    elif "DISCN" in statusList:
+        return "DISCONTINUED"
+    return "UNSURE"
+
+
+def isBasicSaltOrMetalOxide(inString: str, desalting_params: dict) -> bool:
+    """
+    Args:
+        inString (str): name of drug
+        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
+    Returns:
+        bool: if the drug is a simple salt or metal oxide (sodium chloride, potassium phosphate, etc.), return TRUE. Otherwise, return FALSE
+    """
+
+    components = inString.strip().split()
+    for item in components:
+        item = item.replace(';', '').replace(',','')
+        if not item in desalting_params['basic_cations'] and not item in desalting_params['basic_anions'] and not item in desalting_params['other_identifiers']:
+            return False 
+    return True
+
+
+def removeCationsAnionsAndBasicTerms(ingredientString, desalting_params):
+    """
+    Args:
+        ingredientString (str): name of drug ingredient
+        desalting_params (dict): parameters for desalting, including inactive cation and anion names and other terms e.g. hydrate, dibasic, etc.
+    Returns:
+        str: cleaned ingredient name with salts removed. Ideally this will be just the active moiety. The full salt name is returned if it is
+             a simple salt, e.g. sodium chloride or potassium phosphate.
+    """
+    if not isBasicSaltOrMetalOxide(ingredientString, desalting_params):
+        components = ingredientString.strip().split()
+        for ind,i in enumerate(components):
+            if i in desalting_params['basic_anions'] or i in desalting_params['basic_cations'] or i in desalting_params['other_identifiers']:
+                components[ind] = ''
+        newString = ''
+        for i in components:
+            newString = newString + i + " "
+        newString = newString[:-1]
+        return newString
+    return ingredientString.strip()
+
+
 def remove_manually_excluded_drugs(list_in: pd.DataFrame, exclusions: list[str], drug_name_column: str) -> pd.DataFrame:
+    """
+    Args:
+        list_in (pandas.DataFrame): data frame with a list of drugs, containing column "{drug_name_column}"
+        exclusions (list[str]): drugs to exclude from list
+        drug_name_column (string): what the drug name column is called
+
+    Returns:
+        pd.DataFrame: list_in with exclusions removed.
+    """
+
     indices_to_drop = []
     for idx, row in list_in.iterrows():
         if row[drug_name_column] in exclusions:
@@ -849,10 +797,9 @@ def remove_manually_excluded_drugs(list_in: pd.DataFrame, exclusions: list[str],
 def preprocess_ema(rawdata: pd.DataFrame) -> pd.DataFrame:
     """
     Args:
-        rawdata(pd.DataFrame): raw FDA data
-        exclusions(pd.DataFrame): manually curated list of exclusions from FDA list.
+        rawdata(pd.DataFrame): raw EMA data
     Returns:
-        list[str]: a raw list of all of the drugs in the FDA book
+        pd.DataFrame: a raw list of all of the drugs in the EMA book with some processing done to remove problematic rows.
     """
     indices_to_drop = []
     for idx, row in rawdata.iterrows():
@@ -861,12 +808,55 @@ def preprocess_ema(rawdata: pd.DataFrame) -> pd.DataFrame:
     new_df = rawdata.drop(indices_to_drop)
     return new_df
 
+
+def preprocess_pmda(rawdata:pd.DataFrame) -> pd.DataFrame:
+    """
+    Args:
+        rawdata(pd.DataFrame): raw PMDA data
+    Returns:
+        pd.DataFrame: processed PMDA data based on existing problems.
+    """
+    new_names = []
+    name_label = "Active Ingredient (underlined: new active ingredient)"
+    for idx, row in tqdm(rawdata.iterrows(), total=len(rawdata), desc="cleaning PMDA list"):
+        item = row[name_label]
+        try:
+            item = item.upper()
+            item = item.strip().replace("A COMBINATION DRUG OF", "").strip(' ')
+            if "(" in item:
+                item = item.replace("(1)","").replace("(2)","").replace("(3)","").replace("(4)","").replace("(5)","").replace("(6)","").replace("(7)","").replace("(8)","")\
+                .replace("(9)","").replace("(10)","").replace("(11)","").replace("(12)","").replace("(13)","").replace("(14)","").replace("(15)","").replace("(16)","")\
+                .replace("(17)","").replace("(18)","").replace("(19)","").replace("(20)","").replace("(20)","").replace("(21)","").replace("1)","").replace("2)","").replace("5)","")
+
+            item = item.replace("1)", "").replace("2)", "").replace("5)","")
+
+            item = item.replace("\n", " ")
+
+            if type(item)!=float and (("," in item) or ("/" in item) or (" AND " in item)) and item not in exclusions:
+                item= item.replace(",","; ").replace(" AND ", "; ").replace("/","; ").replace(";;",";").replace(";  ", "; ").replace("  ;", ";").replace(" ;",";").strip()
+            new_names.append(item)
+        except:
+            print("encountered problem with ", item)
+            new_names.append("error")
+    rawdata[name_label] = new_names
+    return rawdata
+
+
 def remove_illegal_characters_openpyxl(input_list: pd.DataFrame):
     return input_list.applymap(lambda x: x.encode('unicode_escape').
                  decode('utf-8') if isinstance(x, str) else x)
 
 
 def create_standardized_columns(df_in: pd.DataFrame, drug_name_column:str, approval_date_column:str) -> pd.DataFrame:
+    """
+    Args:
+        df_in (pd.DataFrame): raw data converted to dataframe
+        drug_name_column (str): name of drug column in raw data source
+        approval_date_column (str): name of approval date column 
+    Returns:
+        pd.DataFrame: raw data converted to dataframe with drug name and approval date columns renamed so we can use them later.
+    """
+
     df_in.rename(
         columns={drug_name_column:'drug_name',
                  approval_date_column:'approval_date',
@@ -875,7 +865,20 @@ def create_standardized_columns(df_in: pd.DataFrame, drug_name_column:str, appro
         )
     # remove illegal unicode characters from list:
     df_in = remove_illegal_characters_openpyxl(df_in)
+    new_names = []
+    for idx, row in df_in.iterrows():
+        if type(row['drug_name'])==float:
+            new_names.append("Error")
+        else:
+            new_names.append(row['drug_name'].upper())
+    df_in['drug_name'] = new_names
+    df_in.drop_duplicates(subset='drug_name', inplace=True)
     return df_in
+
+def standardize_approval_date_format(df_in: pd.DataFrame) -> pd.DataFrame:
+    for idx, row in tqdm(df_in.iterrows(), total=len(df_in), desc = "standardizing date format"):
+        approval_date_string = row['approval_date']
+        prompt = f"Please convert the following string: ({approval_date_string}) to "
 
 def is_combination_therapy(item: str, delimiters: list[str], exclusions: list[str]) -> bool:
     if type(item)==float:
@@ -895,7 +898,23 @@ def tag_combination_therapies(inputList: pd.DataFrame, delimiters: list[str], ex
     return inputList
 
 
-def identify(name, params):
+def preferRXCUI(curieList:list[str], labelList:list[str]) -> tuple:
+    """
+    Args: 
+        curieList (list[str]): list of Curie IDs
+        labelList (list[str]): list of labels for respective Curie IDs
+
+    Returns:
+        tuple: first Curie ID that is in RXCUI and associated label, or just first curie and label if no RXCUI.
+
+    """
+
+    for idx, item in enumerate(curieList):
+        if "RXCUI" in item:
+            return item, labelList[idx]
+    return curieList[0], labelList[0]           
+
+def identify(name: str, params: dict, prefer_rxcui: bool):
     """
     Args:
         name (str): string to be identified
@@ -903,7 +922,7 @@ def identify(name, params):
     
     Returns:
         resolvedName (list[str]): IDs most closely matching string.
-        resolvedLabel (list[str]): List of labels associated with respective resolvedName.
+        resolvedLabel (list[str]): labels associated with respective resolvedName items.
 
     """
     if type(name) == float:
@@ -939,6 +958,8 @@ def identify(name, params):
         
         if failedCounts >= 5:
             return ["Error"], ["Error"]
+    if prefer_rxcui:
+        return preferRXCUI(resolvedName, resolvedLabel)
     return resolvedName[0], resolvedLabel[0]
 
 def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
@@ -952,7 +973,11 @@ def identify_drugs(input_list: pd.DataFrame, params: dict) -> pd.DataFrame:
             ids.append(ids_cache[drug_name])
             labels.append(labels_cache[drug_name])
         else:
-            item_curie, item_label = identify(drug_name, params)
+            if row['combination_therapy']:
+                prefer_rxcui = True
+            else:
+                prefer_rxcui = False
+            item_curie, item_label = identify(drug_name, params, prefer_rxcui)
             ids.append(item_curie)
             labels.append(item_label)
             ids_cache[drug_name]=item_curie
@@ -990,6 +1015,27 @@ def add_ingredients(input_list: pd.DataFrame, delimiters: list[str]):
     input_list["ingredients_list"]=ingredients_list
     return input_list
 
+
+def desalt_drugs(in_list: pd.DataFrame, desalting_params: dict) -> pd.DataFrame:
+    new_name_col = []
+    for idx, row in tqdm(in_list.iterrows(), total=len(in_list)):
+        if type(row["drug_name"])==float:
+            new_name_col.append("Error")
+        else:
+            curr_name_col = []
+            if row['combination_therapy']==True:
+                new_name_items = []
+                for item in string_to_list(row['ingredients_list']):
+                    new_name_items.append(removeCationsAnionsAndBasicTerms(item, desalting_params).strip())
+                new_name_items.sort()
+                new_name_col.append("; ".join(new_name_items))
+            else:
+                new_name_col.append(removeCationsAnionsAndBasicTerms(row['drug_name'], desalting_params))
+    in_list['drug_name']=new_name_col
+    return in_list
+
+
+
 def add_row (original_list: pd.DataFrame, columns: dict) -> pd.DataFrame:
     original_list = pd.concat([original_list, pd.DataFrame(columns, index = [0])], ignore_index=True)
     return original_list
@@ -997,11 +1043,11 @@ def add_row (original_list: pd.DataFrame, columns: dict) -> pd.DataFrame:
 def add_unlisted_single_ingredients(input_list: pd.DataFrame) -> pd.DataFrame:
     ingList = list(input_list['drug_name'])
     for idx, row in tqdm(input_list.iterrows(), total=len(input_list), desc="adding unlisted single therapies"):
-        if row['combination_therapy']==True:
+        if row['combination_therapy']:
             for item in string_to_list(row['ingredients_list']):
                 if item not in ingList:
                     new_columns = {
-                        'drug_name':item, 
+                        'drug_name':item.strip(), 
                         'approval_date':row['approval_date'],
                         'combination_therapy':False
                         }
@@ -1040,7 +1086,7 @@ def add_ingredient_ids(input_list: pd.DataFrame, nameres_params) -> pd.DataFrame
                 if ingredient in cache:
                     curr_row_ingredient_ids.append(cache[ingredient])
                 else:
-                    curie,label = identify(ingredient, nameres_params)
+                    curie,label = identify(ingredient, nameres_params, False)
                     curr_row_ingredient_ids.append(curie)
                     cache[ingredient]=curie
             ingredient_ids_list.append(curr_row_ingredient_ids)   
@@ -1082,9 +1128,35 @@ def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
     input_list['alternate_ids']=alternate_ids
     return input_list
 
+def return_final_list(input_list: pd.DataFrame, properties: list[str], approval_tag: str) -> pd.DataFrame:
+    """
+    Args:
+        input_list (pd.DataFrame): list with lots of features
+        properties (list[str]): list of properties we actually want to save into final list.
+        approval_tag (str): approval tag column name for this list.
+    Returns:
+        pd.DataFrame: input list with just properties.
+    """
+    
+    properties.append(approval_tag)
+    print(f"generating list with properties: {properties}")
+    return input_list[properties]
 
+def reformat_ingredients_with_ollama(in_list: pd.DataFrame, prompt_string) -> pd.DataFrame:
+    new_drug_names = []
+    for idx, row in tqdm(in_list.iterrows(), total=len(in_list), desc="renaming poorly formatted drug names"):
+        prompt = f"{prompt_string}: Drug: {row['drug_name']}"
+        #output = query_ollama(prompt)
 
-
+        output = query_ollama(
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=100
+        )
+        print(output['response'])
+        new_drug_names.append(output["response"])
+    in_list['drug_name'] = new_drug_names
+    return in_list
 
 def query_ollama(
     prompt: str,
@@ -1095,7 +1167,7 @@ def query_ollama(
     top_p: Optional[float] = None,
     top_k: Optional[int] = None,
     url: str = "http://localhost:11434"
-) -> Dict[str, Any]:
+    ) -> Dict[str, Any]:
     """
     Send a prompt to a locally running Ollama model and return its response.
     
@@ -1152,25 +1224,164 @@ def query_ollama(
         raise Exception(f"Failed to communicate with Ollama API: {str(e)}")
     except json.JSONDecodeError as e:
         raise Exception(f"Failed to parse Ollama API response: {str(e)}")
+    
+
+
+
+def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.DataFrame, purplebook: pd.DataFrame) -> pd.DataFrame:
+#     """
+#     Merges all drug lists together and returns the final list. Assumes Name Resolver services are doing a good job.
+
+#     Args:
+#         drugLists (list[pd.Dataframe]): all of the drug lists to be merged.
+
+#     Returns:
+#         pd.DataFrame: merged drug list.
+#     """
+
+#     merged_list = pd.DataFrame()
+#     first_item = True
+#     for idx, item in enumerate([pmda,ema,orangebook,purplebook]):
+#         if first_item:
+#             merged_list = item
+#         else:
+#             merged_list = merged_list.merge(item, on='curie',
+#              how='outer', suffixes=('', '_DROP')).filter(regex="^(?!.*_DROP)")
+#         first_item = False
+
+#     return merged_list
+
+# def merge_dataframes(df_list):
+    """
+    Merge multiple dataframes based on the 'curie' field, combining matching rows.
+    
+    Parameters:
+    df_list (list): List of pandas dataframes to merge
+    
+    Returns:
+    pandas.DataFrame: Merged dataframe with combined rows
+    """
+    df_list = list([pmda, ema, orangebook, purplebook])
+    if not df_list:
+        raise ValueError("Empty list of dataframes provided")
+        
+    if len(df_list) == 1:
+        return df_list[0]
+    
+    # Concatenate all dataframes vertically
+    combined_df = pd.concat(df_list, ignore_index=True)
+    
+    # Define an aggregation function that combines non-null values
+    def combine_rows(series):
+        # Get unique non-null values
+        unique_values = series.dropna().unique()
+        if len(unique_values) == 0:
+            return np.nan
+        elif len(unique_values) == 1:
+            return unique_values[0]
+        else:
+            # If multiple non-null values exist, join them with semicolons
+            return '; '.join(str(x) for x in unique_values)
+    
+    # Group by 'curie' and aggregate all other columns
+    merged_df = combined_df.groupby('curie', as_index=False).agg(combine_rows)
+    
+    return merged_df
+
+def generate_tag_localLlama(drug_list:List, model_params:Dict) -> List:
+    tag_list = []
+    for drug in tqdm(drug_list):
+        output = query_ollama(f"{model_params.get('prompt')} drug: {drug}")
+        tag_list.append(output["response"])
+    return tag_list
+
+
+def enrich_drug_list(drug_list:List, params:Dict, llm_to_use)-> pd.DataFrame:
+    """Node enriching existing drug list with llm-generated tags.
+    
+    Args:
+        drug_list: pd.DataFrame - merged drug_list with drug names column that will be used for tag generation
+        params: Dict - parameters dictionary specifying tag names, column names, and model params
+        llm_to_use: str - name of LLM to use (could include openAI or local Llama instance via ollama)
+    Returns
+        pd.DataFrame with x new tag columns (where x corresponds to number of tags specified in params)
+    """
+    for tag in params.keys():
+        print(f"applying tag: \'{tag}\' to drug list")
+        input_col = params[tag].get('input_col')
+        output_col = params[tag].get('output_col')
+        model_params = params[tag].get('model_params')
+        if llm_to_use == "openai":
+            drug_list[output_col] = generate_tag_openai(drug_list[input_col], model_params)
+        if llm_to_use == "localLlama":
+            drug_list[output_col] = generate_tag_localLlama(drug_list[input_col], model_params)
+        else:
+            print("error")
+    return drug_list
+
+
+
+def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
+    """
+    Retrieve the SMILES string for a chemical compound using its PubChem ID (CID).
+    
+    Args:
+        pubchem_id (int): The PubChem Compound ID (CID)
+    
+    Returns:
+        Optional[str]: The SMILES string if found, None if not found or error occurs
+        
+    Raises:
+        ValueError: If the pubchem_id is not a positive integer
+        requests.RequestException: If there's an error with the API request
+    """
+    if not isinstance(pubchem_id, int) or pubchem_id <= 0:
+        raise ValueError("PubChem ID must be a positive integer")
+
+    # PubChem REST API endpoint
+    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+    endpoint = f"{base_url}/compound/cid/{pubchem_id}/property/IsomericSMILES/JSON"
+
+    try:
+        # Make the API request
+        response = requests.get(endpoint)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Parse the JSON response
+        data = response.json()
+        
+        # Extract the SMILES string
+        smiles = data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
+        return smiles
+        
+    except requests.RequestException as e:
+        print(f"Error making API request: {e}")
+        return None
+    except (KeyError, json.JSONDecodeError) as e:
+        print(f"Error parsing response: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
 
 # Example usage:
-if __name__ == "__main__":
-    try:
-        # Basic usage
-        response = query_ollama("What is the capital of France?")
-        print("Basic Response:", response["response"])
+# if __name__ == "__main__":
+#     try:
+#         # Basic usage
+#         response = query_ollama("What is the capital of France?")
+#         print("Basic Response:", response["response"])
         
-        # Advanced usage with parameters
-        response = query_ollama(
-            prompt="Write a short poem about AI",
-            system_prompt="You are a creative poetry assistant",
-            temperature=0.9,
-            max_tokens=100
-        )
-        print("\nAdvanced Response:", response["response"])
+#         # Advanced usage with parameters
+#         response = query_ollama(
+#             prompt="Write a short poem about AI",
+#             system_prompt="You are a creative poetry assistant",
+#             temperature=0.9,
+#             max_tokens=100
+#         )
+#         print("\nAdvanced Response:", response["response"])
         
-    except Exception as e:
-        print(f"Error: {str(e)}")
+#     except Exception as e:
+#         print(f"Error: {str(e)}")
 
 
 #def build_list(input_data: pd.DataFrame, delimiters: list[str], exclusions: list[str], split_exclusions: list[str], id_params: dict) -> pd.DataFrame:

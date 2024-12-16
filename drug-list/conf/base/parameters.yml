@@ -42,6 +42,8 @@ desalting_params:
     - SUCCINATE
     - LACTATE
     - DIPHOSPHATE
+    - DIPROPIONATE
+    - PROPIONATE
   basic_cations:
     - FERROUS
     - CALCIUM
@@ -84,6 +86,8 @@ split_exclusions_purplebook:
   - ""
 purplebook_drug_name_column: Proper Name
 purplebook_approval_date_column: Approval Date
+marketing_status_column_purplebook: Licensure
+discontinued_marker_purplebook: Voluntarily Revoked
 
 # INDIA
 india_drug_name_column: Drug Name
@@ -105,7 +109,8 @@ delimiters_orangebook:
   - " ; "
   - " W/ "
   - "; "
-
+marketing_status_column_orangebook: "Type"
+discontinued_marker_orangebook: "DISCN"
 
 # PMDA
 exclusions_pmda:
@@ -202,9 +207,10 @@ split_exclusions_pmda:
 pmda_drug_name_column: "Active Ingredient (underlined: new active ingredient)"
 pmda_approval_date_column: Approval Date
 delimiters_pmda: 
-  - ", "
-  - " and "
-  - " / "
+  - ";"
+  # - ", "
+  # - " and "
+  # - " / "
 
 # EMA
 delimiters_ema:
@@ -275,7 +281,6 @@ split_exclusions_ema:
   - HUMAN PAPILLOMAVIRUS 9-VALENT VACCINE (RECOMBINANT, ADSORBED)
   - HEPATITIS A (INACTIVATED) AND HEPATITIS B (RDNA) (HAB) VACCINE (ADSORBED)
   - PANDEMIC INFLUENZA VACCINE (H5N1) (LIVE ATTENUATED, NASAL)
-split_exclusions_ema_2:
   - HEPATITIS B (RDNA) VACCINE (ADJUVANTED, ADSORBED)
   - HUMAN PAPILLOMAVIRUS VACCINE [TYPES 16, 18] (RECOMBINANT, ADJUVANTED, ADSORBED)
   - DIPHTHERIA, TETANUS, PERTUSSIS (ACELLULAR, COMPONENT), HEPATITIS B (RDNA), POLIOMYELITIS (INACTIVATED) AND HAEMOPHILUS TYPE B CONJUGATE VACCINE (ADSORBED)
@@ -351,10 +356,23 @@ exclusions_ema:
   - ioflupane (123l)
   - copper (64Cu) chloride
   - COPPER (64CU) CHLORIDE
+  - piflufolastat (18F)
+  - 13C-urea
+
+
 
 
 
 # NAME RESOLVER
+# name_resolver_params:
+#   url: https://name-resolution-sri.renci.org/
+#   service: lookup
+#   autocomplete_setting: false
+#   id_limit: 10
+#   offset: 0
+#   biolink_type: ChemicalOrDrugOrTreatment
+#   autocomplete: false
+
 name_resolver_params:
   url: https://name-resolution-sri.renci.org/
   service: lookup
@@ -362,42 +380,72 @@ name_resolver_params:
   id_limit: 10
   offset: 0
   biolink_type: ChemicalOrDrugOrTreatment
-  autocomplete: false
+
+
+
+name_resolver_params_local:
+  url: https://localhost:2433/
+  service: lookup
+  autocomplete_setting: false
+  id_limit: 10
+  offset: 0
+  biolink_type: ChemicalOrDrugOrTreatment
+name_reformatting_prompt: Reformat this drug name to include only active moieties separated by semicolons - return only the reformatted list with no additional text or explanations.
 
 
 # DRUG CATEGORY TAGS
 enrichment_tags:
   steroid:
-    input_col: ID_Label
+    input_col: curie_label
     output_col: is_steroid
     model_params: 
       model: gpt-4o-mini
-      prompt: Is this drug a corticosteroid drug? Return TRUE or FALSE only
+      prompt: Is this drug a corticosteroid drug? Return TRUE or FALSE only.
       temperature: 0.8
   antibiotic:
-    input_col: ID_Label
+    input_col: curie_label
     output_col: is_antimicrobial
     model_params:
       model: gpt-4o
-      prompt: "Are any of these drugs in any of the following drug classes: an antibiotic drug, an antiviral drug (usually end in '-vir' or '-udine'), an antiretroviral drug, an antiparasitic drug, or an antifungal drug? Return TRUE or FALSE only"
+      prompt: "Are any of these drugs in any of the following drug classes: an antibiotic drug, an antiviral drug (usually end in '-vir' or '-udine'), an antiretroviral drug, an antiparasitic drug, or an antifungal drug? Return TRUE or FALSE only."
       temperature: 0.8
   chemotherapy:
-    input_col: ID_Label
+    input_col: curie_label
     output_col: is_chemotherapy
     model_params:
       model: gpt-4o-mini
-      prompt: Is this drug a cytotoxic chemotherapy drug used to treat cancer? Return TRUE or FALSE only
+      prompt: Is this drug a cytotoxic chemotherapy drug used to treat cancer? Return TRUE or FALSE only.
       temperature: 0.8
   glucose_regulator:
-    input_col: ID_Label
+    input_col: curie_label
     output_col: is_glucose_regulator
     model_params:
       model: gpt-4o-mini
-      prompt: Is this drug a drug which is primarily used to regulate glucose levels? Return TRUE or FALSE only
+      prompt: Is this drug a drug which is primarily used to regulate glucose levels? Return TRUE or FALSE only.
       temperature: 0.8
+
+llm_to_use: localLlama
+
 
 # APPROVAL TAGS
 approval_tag_usa: "approved_usa"
 approval_tag_europe: "approved_eu"
 approval_tag_japan: "approved_japan"
 approval_tag_india: "approved_india"
+
+
+# LIST PROPERTIES
+drug_list_properties:
+  - drug_name
+  - curie
+  - curie_label
+  - ingredients_list
+  - ingredient_ids
+  - combination_therapy
+  - alternate_ids
+
+lists_to_merge:
+  - ema_list_filtered
+  - orange_book_list_filtered
+  - purple_book_list_filtered
+  - pmda_list_filtered
