@@ -339,10 +339,28 @@ drug_list_merged:
 
 
 # Post-enrichment final list
+drug_list_with_category_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-category-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_corrected_approval_tags_usa:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug_list_corrected_approval_tags_usa.xlsx
+
+drug_list_corrected_approval_tags_europe:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug_list_corrected_approval_tags_europe.xlsx
+
 drug_list_final:
   type: pandas.CSVDataset
   filepath: data/03_primary/drugList.tsv
   save_args:
+    sep: "\t"
+  load_args:
     sep: "\t"
 
 drug_list_with_smiles:

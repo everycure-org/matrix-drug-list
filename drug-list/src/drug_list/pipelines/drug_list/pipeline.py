@@ -140,7 +140,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'purple_book_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_usa'
+                    'params:approval_tag_usa',
+                    'params:additional_drug_list_properties_purplebook'
                 ],
                 outputs = 'purple_book_list_filtered',
                 name = 'return_final_list_purplebook'
@@ -256,7 +257,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'ema_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_europe'
+                    'params:approval_tag_europe',
+                    'params:additional_drug_list_properties_ema'
                 ],
                 outputs = 'ema_list_filtered',
                 name = 'return_final_list_ema'
@@ -270,30 +272,36 @@ def create_pipeline(**kwargs) -> Pipeline:
 
             # ORANGE BOOK BUILD
             node(
+                func = nodes.add_most_permissive_marketing_tags_fda,
+                inputs = 'orange-book-products',
+                outputs = 'orangebook_list_with_marketing_status',
+                name= 'add-marketing-tags-fda',
+            ),
+            node(
                 func=nodes.create_standardized_columns,
                 inputs=[
-                    'orange-book-products',
+                    'orangebook_list_with_marketing_status',
                     'params:orangebook_drug_name_column',
                     'params:orangebook_approval_date_column',
                 ],
                 outputs = 'orange_book_list_standardized',
                 name = 'standardize-orangebook'
             ),
-            node(
-                func=nodes.drop_discontinued_drugs,
-                inputs=[
-                    'orange_book_list_standardized',
-                    "params:marketing_status_column_orangebook",
-                    "params:discontinued_marker_orangebook",
-                ],
-                outputs='orange_book_list_no_discn',
-                name = 'drop-discontinued-drugs-orangebook'
-            ),
+            # node(
+            #     func=nodes.drop_discontinued_drugs,
+            #     inputs=[
+            #         'orange_book_list_standardized',
+            #         "params:marketing_status_column_orangebook",
+            #         "params:discontinued_marker_orangebook",
+            #     ],
+            #     outputs='orange_book_list_no_discn',
+            #     name = 'drop-discontinued-drugs-orangebook'
+            # ),
 
             node(
                 func=nodes.tag_combination_therapies,
                 inputs=[
-                    'orange_book_list_no_discn',
+                    'orange_book_list_standardized',
                     'params:delimiters_orangebook',
                     'params:split_exclusions_orangebook',
                 ],
@@ -367,7 +375,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'orange_book_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_usa'
+                    'params:approval_tag_usa',
+                    'params:additional_drug_list_properties_usa',
                 ],
                 outputs = 'orange_book_list_filtered',
                 name = 'return_final_list_orangebook'
@@ -551,7 +560,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'pmda_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_japan'
+                    'params:approval_tag_japan',
+                    'params:additional_drug_list_properties_pmda'
                 ],
                 outputs = 'pmda_list_filtered',
                 name = 'return_final_list_pmda'
@@ -598,9 +608,37 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=['drug_list_merged',
                         'params:enrichment_tags',
                         'params:llm_to_use'],
-                outputs = 'drug_list_final',
+                outputs = 'drug_list_with_category_tags',
                 name = 'drug-list-enrichment'
             ),
+            node(
+                func=nodes.add_approval_false_tags,
+                inputs=[
+                    'drug_list_with_category_tags',
+                    'params:approval_tag_usa',
+                ],
+                outputs='drug_list_corrected_approval_tags_usa',
+                name = 'correct-tags-usa'
+            ),
+            node(
+                func=nodes.add_approval_false_tags,
+                inputs=[
+                    'drug_list_corrected_approval_tags_usa',
+                    'params:approval_tag_europe',
+                ],
+                outputs='drug_list_corrected_approval_tags_europe',
+                name = 'correct-tags-europe'
+
+            ),
+            node(
+                func=nodes.add_approval_false_tags,
+                inputs=[
+                    'drug_list_corrected_approval_tags_europe',
+                    'params:approval_tag_japan',
+                ],
+                outputs='drug_list_final',
+                name = 'correct-tags-japan',
+            )
             
             # # ADD SMILES STRINGS WHEN APPLICABLE
             # node(

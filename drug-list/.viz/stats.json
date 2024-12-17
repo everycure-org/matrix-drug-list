@@ -1,1 +1,1 @@
-{"pmda_list_filtered": {"rows": 1070, "columns": 8, "file_size": 460705}, "ema_list_filtered": {"rows": 1021, "columns": 8, "file_size": 363189}, "orange_book_list_filtered": {"rows": 1504, "columns": 8, "file_size": 629959}, "purple_book_list_filtered": {"rows": 494, "columns": 8, "file_size": 168844}, "drug_list_merged": {"rows": 2159, "columns": 10, "file_size": 736451}}
+{"drug_list_corrected_approval_tags_europe": {"rows": 3136, "columns": 16, "file_size": 1046113}, "drug_list_final": {"rows": 3136, "columns": 16, "file_size": 3419592}}
