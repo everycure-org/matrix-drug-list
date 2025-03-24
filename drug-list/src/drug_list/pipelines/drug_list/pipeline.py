@@ -148,7 +148,9 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
 
 
-
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
 
 
             # EMA BUILD
@@ -264,6 +266,9 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'return_final_list_ema'
             ),
 
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
 
 
 
@@ -362,6 +367,33 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'orange_book_list_with_ingredient_ids',
                 name = 'add-ingredient-ids-orangebook'
             ),
+
+            node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "orange_book_list_with_ingredient_ids",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "orange_book_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-fda"
+            ),
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "orange_book_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag",
+                    "params:biolink_type_drug",
+                    "params:column_names.disease_id_column",
+                    "params:column_names.llm_true_false_column_disease",
+                    "params:column_names.llm_improved_id_column",
+                ],
+                outputs = "dailymed_6",
+                name = "llm-id-improvement"
+            ),
             node(
                 func=nodes.add_alternate_ids,
                 inputs=[
@@ -382,45 +414,95 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'return_final_list_orangebook'
             ),
 
+
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
+
             # # INDIAN APPROVAL LIST
+            node(
+                func=nodes.create_standardized_columns,
+                inputs=[
+                    'indian_drug_approvals_raw_data_set',
+                    'params:india_drug_name_column',
+                    'params:india_approval_date_column',
+                ],
+                outputs= 'indian_drugs_standardized',
+                name = 'standardize-indian-drug-list-raw'
+            ),
+            node(
+                func=nodes.tag_combination_therapies,
+                inputs=[
+                    'indian_drugs_standardized',
+                    'params:delimiters_india',
+                    'params:split_exclusions_india',
+                ],
+                outputs = 'india_list_with_combination_therapy_tags',
+                name = 'tag-combination-therapies-india'
+            ),
+            node(
+                func=nodes.add_approval_tags,
+                inputs=[
+                    'india_list_with_combination_therapy_tags',
+                    'params:approval_tag_india'
+                ],
+                outputs = 'india_list_with_approval_tags',
+                name = 'add-approval-tags-india'
+            ),
+            node(
+                func=nodes.add_ingredients,
+                inputs=[
+                    'india_list_with_approval_tags',
+                    'params:delimiters_india'
+                ],
+                outputs = 'india_list_with_ingredients',
+                name = 'add-ingredients-india'
+            ),
+            node(
+                func = nodes.desalt_drugs,
+                inputs=[
+                    'india_list_with_ingredients',
+                    'params:desalting_params',
+                ],
+                outputs='india_list_desalted',
+                name = 'desalt-list-india',
+            ),
+            node(
+                func=nodes.identify_drugs,
+                inputs=[
+                    'india_list_desalted',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'india_list_with_curies',
+                name = 'get-curies-india'
+            ),
+            node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "india_list_with_curies",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "india_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-india"
+            ),
             # node(
-            #     func=nodes.create_standardized_columns,
-            #     inputs=[
-            #         'indian_drug_approvals_raw_data_set',
-            #         'params:india_drug_name_column',
-            #         'params:india_approval_date_column',
+            #     func=nodes.llm_improve_ids,
+            #     inputs = [
+            #         "india_list_with_llm_id_check",
+            #         "params:column_names.drug_name",
+            #         "params:llm_best_id_tag",
+            #         "params:biolink_type_drug",
+            #         "params:column_names.disease_id_column",
+            #         "params:column_names.llm_true_false_column_disease",
+            #         "params:column_names.llm_improved_id_column",
             #     ],
-            #     outputs= 'indian_drugs_standardized',
-            #     name = 'standardize-indian-drug-list-raw'
+            #     outputs = "india_list_improved_ids",
+            #     name = "llm-id-improvement-india"
             # ),
-            # node(
-            #     func=nodes.tag_combination_therapies,
-            #     inputs=[
-            #         'indian_drugs_standardized',
-            #         'params:delimiters_india',
-            #         'params:split_exclusions_india',
-            #     ],
-            #     outputs = 'india_list_with_combination_therapy_tags',
-            #     name = 'tag-combination-therapies-india'
-            # ),
-            # node(
-            #     func=nodes.identify_drugs,
-            #     inputs=[
-            #         'india_list_with_combination_therapy_tags',
-            #         'params:name_resolver_params'
-            #     ],
-            #     outputs = 'india_list_with_curies',
-            #     name = 'get-curies-india'
-            # ),
-            # node(
-            #     func=nodes.add_approval_tags,
-            #     inputs=[
-            #         'india_list_with_curies',
-            #         'params:approval_tag_india'
-            #     ],
-            #     outputs = 'india_list_with_approval_tags',
-            #     name = 'add-approval-tags-india'
-            # ),
+           
             # node(
             #     func=nodes.add_ingredients,
             #     inputs=[
@@ -447,11 +529,120 @@ def create_pipeline(**kwargs) -> Pipeline:
             #     outputs = 'india_list',
             #     name = 'add-alternate-ids-india'
             # ),
+ 
+ 
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
 
 
+            # RUSSIA
+            node(
+                func = nodes.translate_dataframe_columns,
+                inputs=[
+                    'russia_base_list',
+                    'params:in_language_russia',
+                    'params:out_language_russia',
+                ],
+                outputs = 'russia_list_translated',
+                name = 'translate-russia-list'
+            ),
+            node(
+                func=nodes.create_standardized_columns,
+                inputs=[
+                    "russia_list_translated",
+                    "params:russia_drug_column",
+                    "params:russia_approval_date_column",   
+                ],
+                outputs = "russia_list_standardized",
+                name = "standardize-columns-russia"
+            ),
+            node(
+                func=nodes.tag_combination_therapies,
+                inputs=[
+                    'russia_list_standardized',
+                    'params:delimiters_russia',
+                    'params:split_exclusions_russia',
+                ],
+                outputs = 'russia_list_with_combination_therapy_tags',
+                name = 'tag-combination-therapies-russia'
+            ),
+            node(
+                func=nodes.add_approval_tags,
+                inputs=[
+                    'russia_list_with_combination_therapy_tags',
+                    'params:approval_tag_russia'
+                ],
+                outputs = 'russia_list_with_approval_tags',
+                name = 'add-approval-tags-russia'
+            ),
+            node(
+                func=nodes.add_ingredients,
+                inputs=[
+                    'russia_list_with_approval_tags',
+                    'params:delimiters_russia'
+                ],
+                outputs = 'russia_list_with_ingredients',
+                name = 'add-ingredients-russia'
+            ),
+            node(
+                func = nodes.desalt_drugs,
+                inputs=[
+                    'russia_list_with_ingredients',
+                    'params:desalting_params',
+                ],
+                outputs='russia_list_desalted',
+                name = 'desalt-list-russia',
+            ),
+            node(
+                func=nodes.identify_drugs,
+                inputs=[
+                    'russia_list_desalted',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'russia_list_with_curies',
+                name = 'get-curies-russia'
+            ),
+            
+            node(
+                func=nodes.add_ingredient_ids,
+                inputs=[
+                    'russia_list_with_curies',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'russia_list_with_ingredient_ids',
+                name = 'add-ingredient-ids-russia'
+            ),
+            node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "russia_list_with_ingredient_ids",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "russia_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-russia"
+            ),
 
-
-
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "russia_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag",
+                    "params:biolink_type_drug",
+                    "params:column_names.disease_id_column",
+                    "params:column_names.llm_true_false_column_disease",
+                    "params:column_names.llm_improved_id_column",
+                ],
+                outputs = "russia_list_improved_ids",
+                name = "llm-id-improvement-russia"
+            ),
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
 
             # JAPANESE APPROVAL LIST
             node(
@@ -566,6 +757,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'pmda_list_filtered',
                 name = 'return_final_list_pmda'
             ),
+            
 
             # node(
             # func=nodes.build_drug_list,
@@ -601,6 +793,13 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs='drug_list_merged',
                 name='merge-drug-lists'
             ),
+
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
+
+
+
 
             # DRUG LIST CATEGORIZATION TAGS
             node(
@@ -638,17 +837,17 @@ def create_pipeline(**kwargs) -> Pipeline:
                 ],
                 outputs='drug_list_final',
                 name = 'correct-tags-japan',
-            )
+            ),
             
-            # # ADD SMILES STRINGS WHEN APPLICABLE
-            # node(
-            #     func=nodes.add_SMILES_strings,
-            #     inputs=[
-            #         "drug_list",
-            #     ],
-            #     outputs="drug_list_with_smiles",
-            #     name = "add-smiles-to-list"
-            # )
+            # ADD SMILES STRINGS WHEN APPLICABLE
+            node(
+                func=nodes.add_SMILES_strings,
+                inputs=[
+                    "drug_list_final",
+                ],
+                outputs="drug_list_with_smiles",
+                name = "add-smiles-to-list"
+            )
 
         ]
     )

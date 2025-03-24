@@ -61,6 +61,9 @@ pmda_split_exclusions:
 
 
 
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
 
@@ -109,6 +112,9 @@ purple_book_list_filtered:
   filepath: data/02_intermediate/purplebook/purple-book-list-filtered.xlsx
 
 
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
 
@@ -155,6 +161,10 @@ orange_book_list_with_ingredient_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orangebook-with-ingredient-ids.xlsx
 
+orange_book_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-llm-id-check.xlsx  
+
 orange_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orange-book-list.xlsx
@@ -164,6 +174,9 @@ orange_book_list_filtered:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orange-book-list-filtered.xlsx
 
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
 
@@ -221,6 +234,11 @@ ema_list:
 ema_list_filtered:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema/ema-list-filtered.xlsx
+
+
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
 
@@ -283,6 +301,9 @@ pmda_list_filtered:
   filepath: data/02_intermediate/pmda/pmda-list-filtered.xlsx
 
 
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
 
@@ -300,13 +321,26 @@ india_list_with_combination_therapy_tags:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/India/india-with-combo-therapy-tags.xlsx
 
-india_list_with_curies:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/India/india-with-curies.xlsx
 
 india_list_with_approval_tags:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/India/india-with-approval-tags.xlsx
+
+india_list_desalted:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-desalted.xlsx
+
+india_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-curies.xlsx
+
+india_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-with-llm-id-check.xlsx
+
+india_list_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-improved-ids.xlsx
 
 india_list_with_ingredients:
   type: pandas.ExcelDataset
@@ -320,9 +354,73 @@ india_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/India/india-list.xlsx
 
+##########################################################################################
+##########################################################################################
+##########################################################################################
 
 
-  # GRAS
+
+# RUSSIA
+russia_base_list:
+  type: pandas.ExcelDataset
+  filepath: "data/01_raw/Russian State Register of Medicines.xlsx"
+  load_args:
+    skiprows: [0]
+
+# russia_base_list:
+#   type: pandas.ExcelDataset
+#   filepath: "data/01_raw/russian_drugs_test.xlsx"
+#   load_args:
+#     skiprows: [0]
+
+russia_list_translated:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia-list-translated.xlsx
+
+russia_list_standardized:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia-list-standardized.xlsx
+
+russia_list_with_combination_therapy_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_combo_therapy_tags.xlsx
+
+russia_list_with_approval_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_approval_tags.xlsx
+
+russia_list_with_ingredients:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_with_ingredients.xlsx
+
+russia_list_desalted:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_desalted.xlsx
+
+russia_list_with_curies:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_with_curies.xlsx
+
+
+russia_list_with_ingredient_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_with_ingredient_ids.xlsx
+
+russia_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_with_llm_id_check.xlsx
+
+russia_list_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_improved_ids.xlsx
+##########################################################################################
+##########################################################################################
+##########################################################################################
+
+
+
+
+# GRAS
 gras_raw_data_set:
   type: pandas.CSVDataset
   filepath: data/01_raw/gras_raw_data.csv
@@ -330,6 +428,12 @@ gras_raw_data_set:
 gras_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/gras_list.xlsx
+
+
+##########################################################################################
+##########################################################################################
+##########################################################################################
+
 
 
 # Merged Drug List

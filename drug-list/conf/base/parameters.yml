@@ -148,6 +148,8 @@ exclusions_pmda:
   - W;
   - 23F;
   - "(UNDERLINED: NEW ACTIVE INGREDIENTS)"
+
+
 split_exclusions_pmda:
   - NEISSERIA MENINGITIDIS POLYSACCHARIDES CONJUGATED TO TETANUS TOXOID (SEROGROUPS A, C, W, AND Y)
   - PNEUMOCOCCAL POLYSACCHARIDES OF SEROTYPES 1, 3, 4, 5, 6A, 6B, 7F, 9V, 14, 18C, 19A, 19F, 22F, 23F, AND 33F CONJUGATED TO CRM197 CARRIER PROTEIN
@@ -221,7 +223,6 @@ delimiters_ema:
   - " AND "
 ema_drug_name_column: International non-proprietary name (INN) / common name
 ema_approval_date_column: Marketing authorisation date
-
 split_exclusions_ema:
   - MENINGOCOCCAL GROUP B VACCINE (RECOMBINANT, ADSORBED)
   - PNEUMOCOCCAL POLYSACCHARIDE CONJUGATE VACCINE (13-VALENT, ADSORBED)
@@ -362,8 +363,17 @@ exclusions_ema:
   - 13C-urea
 
 
+# RUSSIA
+in_language_russia: ru
+out_language_russia: en
+russia_drug_column: International non -parted or chemical name
+russia_approval_date_column: The date of registration
 
+split_exclusions_russia:
+  - None
 
+delimiters_russia:
+  - "+"
 
 # NAME RESOLVER
 name_resolver_params:
@@ -375,7 +385,6 @@ name_resolver_params:
   biolink_type: ChemicalOrDrugOrTreatment
 
 
-
 name_resolver_params_local:
   url: https://localhost:2433/
   service: lookup
@@ -384,6 +393,17 @@ name_resolver_params_local:
   offset: 0
   biolink_type: ChemicalOrDrugOrTreatment
 name_reformatting_prompt: Reformat this drug name to include only active moieties separated by semicolons - return only the reformatted list with no additional text or explanations.
+
+
+column_names:
+  drug_name: drug_name
+  nameres_first_label: curie_label
+  id_correct_incorrect_tag_drug: llm_correct_incorrect
+  llm_true_false_column_drug: llm_first_curie_correct
+  llm_best_id_tag: llm_best_id
+
+biolink_type_drug: ChemicalOrDrugOrTreatment
+
 
 
 # DRUG CATEGORY TAGS
@@ -418,6 +438,13 @@ enrichment_tags:
       temperature: 0.8
 
 
+
+id_correct_incorrect_tag_drug:
+  model_params:
+    model: gpt-4o
+    prompt: "Are the following concepts similar enough that they could be considered the same drug? Return only TRUE or FALSE. Provide no explanation."
+    temperature: 0
+
 #options: localLlama openai
 llm_to_use: localLlama
 
@@ -427,6 +454,7 @@ approval_tag_usa: "approved_usa"
 approval_tag_europe: "approved_eu"
 approval_tag_japan: "approved_japan"
 approval_tag_india: "approved_india"
+approval_tag_russia: "approved_russia"
 
 
 # LIST PROPERTIES
@@ -454,3 +482,6 @@ lists_to_merge:
   - orange_book_list_filtered
   - purple_book_list_filtered
   - pmda_list_filtered
+
+
+
