@@ -626,16 +626,24 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = "nameres-auto-qc-drug-russia"
             ),
 
+            #inputs:
+            # 1. inList (df)
+            # 2. concept column name (str)
+            # 3. params (dict)
+            # 4. biolink type (str)
+            # 5. first attempt col name (str)
+            # 6. llm decision column
+            # 7. new best id column
             node(
                 func=nodes.llm_improve_ids,
                 inputs = [
                     "russia_list_with_llm_id_check",
                     "params:column_names.drug_name",
-                    "params:llm_best_id_tag",
+                    "params:llm_best_id_tag_drug",
                     "params:biolink_type_drug",
-                    "params:column_names.disease_id_column",
-                    "params:column_names.llm_true_false_column_disease",
-                    "params:column_names.llm_improved_id_column",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_best_id_tag",
                 ],
                 outputs = "russia_list_improved_ids",
                 name = "llm-id-improvement-russia"

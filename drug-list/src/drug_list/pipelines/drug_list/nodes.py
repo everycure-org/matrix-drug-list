@@ -650,6 +650,7 @@ def choose_best_id (concept: str, ids: list[str], labels: list[str], params: dic
     ids_and_names = ";\n".join(ids_and_names)
     prompt = f"{params.get('prompt')} "
     client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+    #print(f"Drug Concept: {concept}. \r\n\n Options: {ids_and_names}")
     output = client.chat.completions.create(
             model=params.get('model'),
             messages=[
@@ -658,13 +659,41 @@ def choose_best_id (concept: str, ids: list[str], labels: list[str], params: dic
                 ],
             temperature= params.get('temperature')
         )
+    print(output.choices[0].message.content)
     return output.choices[0].message.content
 
+# def llm_improve_ids(inList: pd.DataFrame, concept_column_name: str, params: dict, biolink_type: str, first_attempt_column_name: str, llm_decision_column: str, new_best_id_column: str ):
+#     print("Improving IDs with LLM best-choice selection")
+#     new_ids = []
+#     cache = {}
+#     for idx, row in tqdm(inList.iterrows(), total=len(inList), desc="Using LLM to choose best of top 30 nameres hits for each flagged entry"):
+#         concept = row[concept_column_name]
+#         llm_decision = row[llm_decision_column]
+#         if llm_decision == True or (type(llm_decision)==str and llm_decision.upper()=="TRUE"):
+#             new_ids.append(row[first_attempt_column_name])
+#         else:
+#             if concept in cache:
+#                 new_ids.append(cache[concept])
+#             else:
+#                 try:
+#                     ids, labels = get_curie(string=concept, biolink_type=biolink_type, limit=30, autocomplete="false")
+#                     best_id = choose_best_id(concept, ids, labels, params.get('model_params'))
+#                     # append and cache best id from LLM
+#                     new_ids.append(best_id)
+#                     cache[concept]=best_id
+#                 except Exception as e:
+#                     print(e)
+#                     new_ids.append("ERROR")  
+#     inList[new_best_id_column] = new_ids
+#     return clean_bad_entries(clean_bad_entries(inList, new_best_id_column, "ERROR"), new_best_id_column, "NONE")
+
 def llm_improve_ids(inList: pd.DataFrame, concept_column_name: str, params: dict, biolink_type: str, first_attempt_column_name: str, llm_decision_column: str, new_best_id_column: str ):
+    print(inList)
     print("Improving IDs with LLM best-choice selection")
     new_ids = []
     cache = {}
     for idx, row in tqdm(inList.iterrows(), total=len(inList), desc="Using LLM to choose best of top 30 nameres hits for each flagged entry"):
+        
         concept = row[concept_column_name]
         llm_decision = row[llm_decision_column]
         if llm_decision == True or (type(llm_decision)==str and llm_decision.upper()=="TRUE"):
@@ -684,7 +713,6 @@ def llm_improve_ids(inList: pd.DataFrame, concept_column_name: str, params: dict
                     new_ids.append("ERROR")  
     inList[new_best_id_column] = new_ids
     return clean_bad_entries(clean_bad_entries(inList, new_best_id_column, "ERROR"), new_best_id_column, "NONE")
-
 
 
 def add_alternate_ids(input_list: pd.DataFrame) -> pd.DataFrame:
