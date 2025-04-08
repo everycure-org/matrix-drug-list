@@ -15,6 +15,10 @@ from functools import cache
 import asyncio
 from googletrans import Translator
 
+import ast
+import time
+from urllib.parse import quote
+from concurrent.futures import ThreadPoolExecutor
 
 testing = False
 limit = 1000 # limit for testing full pipeline with limited number of names per list
@@ -241,9 +245,9 @@ def multi_split(inString, delims):
 
 def query_ollama(
     prompt: str,
-    model: str = "hf.co/bartowski/Llama-3.3-70B-Instruct-GGUF:IQ2_S",
+    model: str = "gemma3:1b",
     system_prompt: Optional[str] = None,
-    temperature: float = 0.7,
+    temperature: float = 0,
     max_tokens: Optional[int] = None,
     top_p: Optional[float] = None,
     top_k: Optional[int] = None,
@@ -662,31 +666,6 @@ def choose_best_id (concept: str, ids: list[str], labels: list[str], params: dic
     print(output.choices[0].message.content)
     return output.choices[0].message.content
 
-# def llm_improve_ids(inList: pd.DataFrame, concept_column_name: str, params: dict, biolink_type: str, first_attempt_column_name: str, llm_decision_column: str, new_best_id_column: str ):
-#     print("Improving IDs with LLM best-choice selection")
-#     new_ids = []
-#     cache = {}
-#     for idx, row in tqdm(inList.iterrows(), total=len(inList), desc="Using LLM to choose best of top 30 nameres hits for each flagged entry"):
-#         concept = row[concept_column_name]
-#         llm_decision = row[llm_decision_column]
-#         if llm_decision == True or (type(llm_decision)==str and llm_decision.upper()=="TRUE"):
-#             new_ids.append(row[first_attempt_column_name])
-#         else:
-#             if concept in cache:
-#                 new_ids.append(cache[concept])
-#             else:
-#                 try:
-#                     ids, labels = get_curie(string=concept, biolink_type=biolink_type, limit=30, autocomplete="false")
-#                     best_id = choose_best_id(concept, ids, labels, params.get('model_params'))
-#                     # append and cache best id from LLM
-#                     new_ids.append(best_id)
-#                     cache[concept]=best_id
-#                 except Exception as e:
-#                     print(e)
-#                     new_ids.append("ERROR")  
-#     inList[new_best_id_column] = new_ids
-#     return clean_bad_entries(clean_bad_entries(inList, new_best_id_column, "ERROR"), new_best_id_column, "NONE")
-
 def llm_improve_ids(inList: pd.DataFrame, concept_column_name: str, params: dict, biolink_type: str, first_attempt_column_name: str, llm_decision_column: str, new_best_id_column: str ):
     print(inList)
     print("Improving IDs with LLM best-choice selection")
@@ -761,7 +740,7 @@ def reformat_ingredients_with_ollama(in_list: pd.DataFrame, prompt_string) -> pd
     in_list['drug_name'] = new_drug_names
     return in_list
 
-def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.DataFrame, purplebook: pd.DataFrame) -> pd.DataFrame:
+def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.DataFrame, purplebook: pd.DataFrame, russia: pd.DataFrame, india: pd.DataFrame) -> pd.DataFrame:
     """
     Merge multiple dataframes based on the 'curie' field, combining matching rows.
     
@@ -771,7 +750,7 @@ def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.D
     Returns:
     pandas.DataFrame: Merged dataframe with combined rows
     """
-    df_list = list([pmda, ema, orangebook, purplebook])
+    df_list = list([pmda, ema, orangebook, purplebook, russia, india])
     if not df_list:
         raise ValueError("Empty list of dataframes provided")
         
@@ -911,56 +890,6 @@ def add_SMILES_strings(drug_list: pd.DataFrame) -> pd.DataFrame:
     drug_list['smiles']=smiles
     return drug_list
 
-
-
-
-# def translate_dataframe_columns(df, source_lang='ru', dest_lang='en'):
-#     """
-#     Translate all column names from source language to destination language.
-#     This is a synchronous wrapper function that calls the async implementation.
-    
-#     Parameters:
-#     -----------
-#     df : pandas.DataFrame
-#         DataFrame with column names to translate
-#     source_lang : str, default='ru'
-#         Source language code (Russian by default)
-#     dest_lang : str, default='en'
-#         Destination language code (English by default)
-    
-#     Returns:
-#     --------
-#     pandas.DataFrame
-#         DataFrame with translated column names
-#     """
-#     # Run the async function in an event loop
-#     return asyncio.run(_translate_dataframe_columns_async(df, source_lang, dest_lang))
-
-
-# async def _translate_dataframe_columns_async(df, source_lang='ru', dest_lang='en'):
-#     """
-#     Async implementation of the translation function.
-    
-#     Parameters are the same as translate_dataframe_columns.
-#     """
-#     print(f"Translating {len(df.columns)} column names from {source_lang} to {dest_lang}...")
-    
-#     async with Translator() as translator:
-#         # Create a dictionary to store the translations
-#         column_mapping = {}
-        
-#         # Use tqdm for progress tracking
-#         for column in tqdm(df.columns, desc="Translating columns", unit="column"):
-#             result = await translator.translate(column, src=source_lang, dest=dest_lang)
-#             column_mapping[column] = result.text
-        
-#         # Rename the columns in the DataFrame
-#         df_translated = df.rename(columns=column_mapping)
-        
-#         print("Translation complete!")
-#         return df_translated
-    
-
 def translate_dataframe(df, source_lang='ru', dest_lang='en'):
     """
     Translate both column names and data content from source language to destination language.
@@ -1062,3 +991,289 @@ def translate_dataframe_columns(df, source_lang='ru', dest_lang='en'):
     Now it fully translates both columns and data.
     """
     return translate_dataframe(df, source_lang, dest_lang)
+
+
+
+
+########################################################################################
+######################### ATC CODES ####################################################
+########################################################################################
+
+def get_atc_from_drugbank(drugbank_id):
+    """
+    Get ATC code from DrugBank ID using the DrugBank API.
+    Note: This is a placeholder as DrugBank API requires registration and authentication.
+    In a real implementation, you would use your DrugBank API credentials.
+    """
+    # Placeholder for DrugBank API call
+    # In a real implementation, you would use:
+    # response = requests.get(f"https://api.drugbank.com/v1/drugs/{drugbank_id}", headers={"Authorization": "Bearer YOUR_API_KEY"})
+    return None
+
+def get_atc_from_rxnorm(rxnorm_id):
+    """Get ATC code from RxNorm ID using the RxNav API"""
+    try:
+        # First, validate if the input is a valid RxNorm ID (numeric)
+        if not rxnorm_id.isdigit():
+            return None
+            
+        # Call the RxNav API to get ATC codes
+        response = requests.get(f"https://rxnav.nlm.nih.gov/REST/rxcui/{rxnorm_id}/property?propName=ATC")
+        
+        if response.status_code == 200:
+            data = response.json()
+            prop_concept_group = data.get('propConceptGroup', {})
+            if prop_concept_group:
+                prop_concepts = prop_concept_group.get('propConcept', [])
+                atc_codes = [prop['propValue'] for prop in prop_concepts if prop.get('propName') == 'ATC']
+                return atc_codes if atc_codes else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from RxNorm for {rxnorm_id}: {str(e)}")
+        return None
+
+def get_atc_from_chembl(chembl_id):
+    """Get ATC code from ChEMBL ID using the ChEMBL API"""
+    try:
+        # Remove the 'CHEMBL.COMPOUND:' prefix if present
+        if 'CHEMBL.COMPOUND:' in chembl_id:
+            chembl_id = chembl_id.split(':')[1]
+        
+        # Call the ChEMBL API
+        response = requests.get(f"https://www.ebi.ac.uk/chembl/api/data/molecule/{chembl_id}.json")
+        
+        if response.status_code == 200:
+            data = response.json()
+            atc_classifications = data.get('atc_classifications', [])
+            return atc_classifications if atc_classifications else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from ChEMBL for {chembl_id}: {str(e)}")
+        return None
+
+def get_atc_from_pubchem(pubchem_id):
+    """Get ATC code from PubChem ID using PubChem PUG REST API"""
+    try:
+        # Remove the 'PUBCHEM.COMPOUND:' prefix if present
+        if 'PUBCHEM.COMPOUND:' in pubchem_id:
+            pubchem_id = pubchem_id.split(':')[1]
+            
+        # The PubChem API doesn't directly provide ATC codes, so we'll use the classification browser
+        response = requests.get(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{pubchem_id}/JSON")
+        
+        if response.status_code == 200:
+            data = response.json()
+            sections = data.get('Record', {}).get('Section', [])
+            
+            # Look for ATC codes in the classifications
+            for section in sections:
+                if section.get('TOCHeading') == 'Classification':
+                    subsections = section.get('Section', [])
+                    for subsection in subsections:
+                        if 'ATC' in subsection.get('TOCHeading', ''):
+                            information = subsection.get('Information', [])
+                            for info in information:
+                                value = info.get('Value', {}).get('StringWithMarkup', [])
+                                atc_codes = []
+                                for val in value:
+                                    atc_match = re.search(r'[A-Z]\d\d[A-Z][A-Z]\d\d', val.get('String', ''))
+                                    if atc_match:
+                                        atc_codes.append(atc_match.group(0))
+                                if atc_codes:
+                                    return atc_codes
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from PubChem for {pubchem_id}: {str(e)}")
+        return None
+
+def get_atc_from_drugcentral(drugcentral_id):
+    """Get ATC code from DrugCentral ID using the DrugCentral API"""
+    try:
+        # Extract the numeric ID if it has a prefix
+        if 'DrugCentral:' in drugcentral_id:
+            drugcentral_id = drugcentral_id.split(':')[1]
+            
+        # Call the DrugCentral API
+        response = requests.get(f"https://drugcentral.org/api/drugcentral/structures?q={drugcentral_id}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data and isinstance(data, list) and len(data) > 0:
+                drug_data = data[0]
+                atc_codes = []
+                for annotation in drug_data.get('annotations', []):
+                    if annotation.get('type') == 'ATC':
+                        atc_codes.append(annotation.get('value'))
+                return atc_codes if atc_codes else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from DrugCentral for {drugcentral_id}: {str(e)}")
+        return None
+
+def get_atc_from_whocc(drug_name):
+    """Get ATC code from WHO Collaborating Centre for Drug Statistics Methodology"""
+    try:
+        # Encode the drug name for URL
+        encoded_name = quote(drug_name)
+        
+        # Search the WHO ATC database
+        response = requests.get(f"https://www.whocc.no/atc_ddd_index/?name={encoded_name}")
+        
+        if response.status_code == 200:
+            # Parse HTML response to extract ATC codes
+            # This is a placeholder as proper HTML parsing would be needed
+            atc_matches = re.findall(r'[A-Z]\d\d[A-Z][A-Z]\d\d', response.text)
+            return atc_matches if atc_matches else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from WHO for {drug_name}: {str(e)}")
+        return None
+
+def extract_id_from_curie(id_string, prefix):
+    """Extract specific ID from a CURIE string"""
+    for item in id_string.split(','):
+        item = item.strip()
+        if item.startswith(prefix):
+            return item
+    return None
+
+def get_chebi_drugcentral_xrefs(chebi_id):
+    """
+    Get DrugCentral XREFs from a CHEBI ID using the CHEBI API or OLS
+    
+    Parameters:
+    chebi_id (str): CHEBI ID (format: CHEBI:XXXXX)
+    
+    Returns:
+    list: List of DrugCentral IDs referenced by this CHEBI entry
+    """
+    try:
+        # Extract the numeric part if needed
+        if ':' in chebi_id:
+            chebi_num = chebi_id.split(':')[1]
+        else:
+            chebi_num = chebi_id
+            
+        # Use the EBI OLS API to get cross-references
+        response = requests.get(f"https://www.ebi.ac.uk/ols/api/ontologies/chebi/terms/http%253A%252F%252Fpurl.obolibrary.org%252Fobo%252FCHEBI_{chebi_num}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            xrefs = data.get('annotation', {}).get('database_cross_reference', [])
+            
+            # Filter for DrugCentral references
+            drugcentral_ids = []
+            for xref in xrefs:
+                if isinstance(xref, str) and xref.startswith('DrugCentral:'):
+                    drugcentral_ids.append(xref)
+            
+            return drugcentral_ids
+        return []
+    except Exception as e:
+        print(f"Error getting DrugCentral XREFs from CHEBI for {chebi_id}: {str(e)}")
+        return []
+
+def get_atc_for_row(row):
+    """Process a single row to find ATC code"""
+    # Convert string representation of list to actual list if needed
+    if isinstance(row['alternate_ids'], str):
+        try:
+            alt_ids = ast.literal_eval(row['alternate_ids'])
+        except (SyntaxError, ValueError):
+            alt_ids = [id.strip() for id in row['alternate_ids'].strip('[]').split(',')]
+    else:
+        alt_ids = row['alternate_ids']
+    
+    # Add the curie to the list of IDs if not already there
+    if row['curie'] not in alt_ids:
+        alt_ids.append(row['curie'])
+    
+    # Try each source in order of reliability/accessibility
+    for id_item in alt_ids:
+        id_item = id_item.strip("'\" ")
+        
+        # Try DrugBank
+        if 'DRUGBANK:' in id_item:
+            drugbank_id = id_item.split(':')[1]
+            atc = get_atc_from_drugbank(drugbank_id)
+            if atc:
+                return atc
+        
+        # Try ChEMBL
+        if 'CHEMBL.COMPOUND:' in id_item:
+            atc = get_atc_from_chembl(id_item)
+            if atc:
+                return atc
+        
+        # Try PubChem
+        if 'PUBCHEM.COMPOUND:' in id_item:
+            atc = get_atc_from_pubchem(id_item)
+            if atc:
+                return atc
+        
+        # Try DrugCentral
+        if 'DrugCentral:' in id_item:
+            atc = get_atc_from_drugcentral(id_item)
+            if atc:
+                return atc
+    
+    # If no ATC found yet, check if there are CHEBI IDs and try to get DrugCentral XREFs
+    chebi_ids = [id_item.strip("'\" ") for id_item in alt_ids if 'CHEBI:' in id_item]
+    for chebi_id in chebi_ids:
+        # Get DrugCentral XREFs from CHEBI
+        drugcentral_refs = get_chebi_drugcentral_xrefs(chebi_id)
+        
+        # Try to get ATC codes from each DrugCentral reference
+        for dc_ref in drugcentral_refs:
+            atc = get_atc_from_drugcentral(dc_ref)
+            if atc:
+                return atc
+    
+    # If we have a name column, try WHO CC as last resort
+    if 'name' in row and row['name']:
+        atc = get_atc_from_whocc(row['name'])
+        if atc:
+            return atc
+    
+    return None
+
+def get_atc_codes_for_dataframe(df, max_workers=5):
+    """
+    Get ATC classifications for all drugs in a dataframe
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame with 'curie' and 'alternate_ids' columns
+    max_workers (int): Maximum number of parallel workers for API calls
+    
+    Returns:
+    pandas.DataFrame: Original dataframe with new 'atc_codes' column
+    """
+    # Make a copy to avoid modifying the original
+    result_df = df.copy()
+    
+    # Process rows in parallel for efficiency
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all jobs
+        future_to_index = {executor.submit(get_atc_for_row, row): i 
+                          for i, row in df.iterrows()}
+        
+        # Collect results
+        atc_codes = [None] * len(df)
+        for future in tqdm(future_to_index):
+            index = future_to_index[future]
+            try:
+                atc_codes[index] = future.result()
+            except Exception as e:
+                print(f"Error processing row {index}: {str(e)}")
+                atc_codes[index] = None
+    
+    # Add results to dataframe
+    result_df['atc_codes'] = atc_codes
+    
+    return result_df
+
+
+
+########################################################################################
+##################### END ATC CODES ####################################################
+########################################################################################

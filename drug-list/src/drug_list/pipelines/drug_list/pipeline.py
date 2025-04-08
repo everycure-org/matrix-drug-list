@@ -13,7 +13,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             #             "fda_ob_split_exclusions",
             #             "params:desalting_params",
             #             "params:name_resolver_params",
-            #             "params:approval_tag_usa"],
+            #             "params:approval_tags.approval_tag_usa"],
                          
             #     outputs= "orange_book_list",
             #     name = "generate-orange-book-list-node"
@@ -27,7 +27,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             #             "ema_split_exclusions",
             #             "params:desalting_params",
             #             "params:name_resolver_params",
-            #             "params:approval_tag_europe"],  
+            #             "params:approval_tags.approval_tag_europe"],  
             #     outputs= "ema_list",
             #     name = "generate-ema-list-node"
             # ),
@@ -40,7 +40,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             #             "pmda_split_exclusions",
             #             "params:desalting_params",
             #             "params:name_resolver_params",
-            #             "params:approval_tag_japan"],
+            #             "params:approval_tags.approval_tag_japan"],
                          
             #     outputs= "pmda_list",
             #     name = "generate-pmda-list-node"
@@ -93,7 +93,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'purple_book_list_with_curies',
-                    'params:approval_tag_usa'
+                    'params:approval_tags.approval_tag_usa'
                 ],
                 outputs = 'purple_book_list_with_approval_tags',
                 name = 'add-approval-tags-purplebook'
@@ -140,7 +140,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'purple_book_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_usa',
+                    'params:approval_tags.approval_tag_usa',
                     'params:additional_drug_list_properties_purplebook'
                 ],
                 outputs = 'purple_book_list_filtered',
@@ -197,7 +197,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'ema_list_with_combination_therapy_tags',
-                    'params:approval_tag_europe'
+                    'params:approval_tags.approval_tag_europe'
                 ],
                 outputs = 'ema_list_with_approval_tags',
                 name = 'add-approval-tags-ema'
@@ -259,7 +259,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'ema_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_europe',
+                    'params:approval_tags.approval_tag_europe',
                     'params:additional_drug_list_properties_ema'
                 ],
                 outputs = 'ema_list_filtered',
@@ -318,7 +318,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'orange_book_list_with_combination_therapy_tags',
-                    'params:approval_tag_usa'
+                    'params:approval_tags.approval_tag_usa'
                 ],
                 outputs = 'orange_book_list_with_approval_tags',
                 name = 'add-approval-tags-orangebook'
@@ -407,7 +407,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'orange_book_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_usa',
+                    'params:approval_tags.approval_tag_usa',
                     'params:additional_drug_list_properties_usa',
                 ],
                 outputs = 'orange_book_list_filtered',
@@ -444,7 +444,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'india_list_with_combination_therapy_tags',
-                    'params:approval_tag_india'
+                    'params:approval_tags.approval_tag_india'
                 ],
                 outputs = 'india_list_with_approval_tags',
                 name = 'add-approval-tags-india'
@@ -487,6 +487,48 @@ def create_pipeline(**kwargs) -> Pipeline:
                 ],
                 outputs = "india_list_with_llm_id_check",
                 name = "nameres-auto-qc-drug-india"
+            ),
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "india_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag_drug",
+                    "params:biolink_type_drug",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_best_id_tag",
+                ],
+                outputs = "india_list_improved_ids",
+                name = "llm-id-improvement-india"
+            ),
+            node(
+                func=nodes.add_alternate_ids,
+                inputs=[
+                    'india_list_improved_ids'
+                ],
+                outputs = 'india_list',
+                name = 'add-alternate-ids-india'
+            ),
+            node(
+                func=nodes.add_ingredient_ids,
+                inputs=[
+                    'india_list',
+                    'params:name_resolver_params'
+                ],
+                outputs = 'india_list_with_ingredient_ids',
+                name = 'add-ingredient-ids-india'
+            ),
+            node(
+                func=nodes.return_final_list,
+                inputs=[
+                    'india_list_with_ingredient_ids',
+                    'params:drug_list_properties',
+                    'params:approval_tags.approval_tag_india',
+                    'params:additional_drug_list_properties_india'
+                ],
+                outputs = 'india_list_filtered',
+                name = 'return_final_list_india'
             ),
             # node(
             #     func=nodes.llm_improve_ids,
@@ -571,7 +613,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'russia_list_with_combination_therapy_tags',
-                    'params:approval_tag_russia'
+                    'params:approval_tags.approval_tag_russia'
                 ],
                 outputs = 'russia_list_with_approval_tags',
                 name = 'add-approval-tags-russia'
@@ -648,6 +690,25 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = "russia_list_improved_ids",
                 name = "llm-id-improvement-russia"
             ),
+            node(
+                func=nodes.add_alternate_ids,
+                inputs=[
+                    'russia_list_improved_ids'
+                ],
+                outputs = 'russia_list',
+                name = 'add-alternate-ids-russia'
+            ),
+            node(
+                func=nodes.return_final_list,
+                inputs=[
+                    'russia_list',
+                    'params:drug_list_properties',
+                    'params:approval_tags.approval_tag_russia',
+                    'params:additional_drug_list_properties_russia'
+                ],
+                outputs = 'russia_list_filtered',
+                name = 'return_final_list_russia'
+            ),
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
@@ -706,7 +767,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_tags,
                 inputs=[
                     'pmda_list_with_combination_therapy_tags',
-                    'params:approval_tag_japan'
+                    'params:approval_tags.approval_tag_japan'
                 ],
                 outputs = 'pmda_list_with_approval_tags',
                 name = 'add-approval-tags-pmda'
@@ -759,7 +820,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=[
                     'pmda_list',
                     'params:drug_list_properties',
-                    'params:approval_tag_japan',
+                    'params:approval_tags.approval_tag_japan',
                     'params:additional_drug_list_properties_pmda'
                 ],
                 outputs = 'pmda_list_filtered',
@@ -797,11 +858,21 @@ def create_pipeline(**kwargs) -> Pipeline:
                         'ema_list_filtered',
                         'orange_book_list_filtered',
                         'purple_book_list_filtered',
+                        'russia_list_filtered',
+                        'india_list_filtered'
                 ],
                 outputs='drug_list_merged',
                 name='merge-drug-lists'
             ),
 
+            node(
+                func=nodes.get_atc_codes_for_dataframe,
+                inputs=[
+                    "drug_list_merged"
+                ],
+                outputs = "drug_list_atc",
+                name = "get-atc-codes"
+            ),
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
@@ -810,6 +881,7 @@ def create_pipeline(**kwargs) -> Pipeline:
 
 
             # DRUG LIST CATEGORIZATION TAGS
+            
             node(
                 func=nodes.enrich_drug_list,
                 inputs=['drug_list_merged',
@@ -822,7 +894,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_false_tags,
                 inputs=[
                     'drug_list_with_category_tags',
-                    'params:approval_tag_usa',
+                    'params:approval_tags.approval_tag_usa',
                 ],
                 outputs='drug_list_corrected_approval_tags_usa',
                 name = 'correct-tags-usa'
@@ -831,7 +903,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_false_tags,
                 inputs=[
                     'drug_list_corrected_approval_tags_usa',
-                    'params:approval_tag_europe',
+                    'params:approval_tags.approval_tag_europe',
                 ],
                 outputs='drug_list_corrected_approval_tags_europe',
                 name = 'correct-tags-europe'
@@ -841,11 +913,31 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_false_tags,
                 inputs=[
                     'drug_list_corrected_approval_tags_europe',
-                    'params:approval_tag_japan',
+                    'params:approval_tags.approval_tag_japan',
                 ],
-                outputs='drug_list_final',
+                outputs='drug_list_corrected_approval_tags_japan',
                 name = 'correct-tags-japan',
             ),
+            node(
+                func=nodes.add_approval_false_tags,
+                inputs=[
+                    'drug_list_corrected_approval_tags_japan',
+                    'params:approval_tags.approval_tag_india',
+                ],
+                outputs='drug_list_corrected_approval_tags_india',
+                name = 'correct-tags-india',
+            ),
+            node(
+                func=nodes.add_approval_false_tags,
+                inputs=[
+                    'drug_list_corrected_approval_tags_india',
+                    'params:approval_tags.approval_tag_russia',
+                ],
+                outputs='drug_list_final',
+                name = 'correct-tags-russia',
+            ),
+            
+            
             
             # ADD SMILES STRINGS WHEN APPLICABLE
             node(

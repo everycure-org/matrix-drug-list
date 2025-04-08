@@ -354,6 +354,10 @@ india_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/India/india-list.xlsx
 
+india_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/India/india-list-filtered.xlsx
+
 ##########################################################################################
 ##########################################################################################
 ##########################################################################################
@@ -413,6 +417,15 @@ russia_list_with_llm_id_check:
 russia_list_improved_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/Russia/russia_list_improved_ids.xlsx
+
+russia_list:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list.xlsx
+
+russia_list_filtered:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/Russia/russia_list_filtered.xlsx
+
 ##########################################################################################
 ##########################################################################################
 ##########################################################################################
@@ -441,6 +454,10 @@ drug_list_merged:
   type: pandas.ExcelDataset
   filepath: data/03_primary/merged_drugList.xlsx
 
+drug_list_atc:
+  type: pandas.ExcelDataset
+  filepath: data/03_primary/merged_drugList_with_atc.xlsx
+
 
 # Post-enrichment final list
 drug_list_with_category_tags:
@@ -458,6 +475,12 @@ drug_list_corrected_approval_tags_usa:
 drug_list_corrected_approval_tags_europe:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/drug_list_corrected_approval_tags_europe.xlsx
+drug_list_corrected_approval_tags_japan:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug_list_corrected_approval_tags_japan.xlsx
+drug_list_corrected_approval_tags_india:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug_list_corrected_approval_tags_india.xlsx
 
 drug_list_final:
   type: pandas.CSVDataset
