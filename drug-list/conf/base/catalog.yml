@@ -103,6 +103,14 @@ purple_book_list_with_ingredient_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/purplebook/purplebook-with-ingredient-ids.xlsx
 
+purple_book_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook/purplebook-with-llm-id-check.xlsx
+
+purplebook_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/purplebook/purplebook_improved_ids.xlsx
+
 purple_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/purplebook/purple-book-list.xlsx
@@ -165,6 +173,10 @@ orange_book_list_with_llm_id_check:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orangebook-with-llm-id-check.xlsx  
 
+orange_book_list_with_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/orangebook/orangebook-with-improved-ids.xlsx
+
 orange_book_list:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/orangebook/orange-book-list.xlsx
@@ -223,6 +235,14 @@ ema_list_with_ingredient_ids:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema/ema-with-ingredient-ids.xlsx
 
+ema_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema-with-llm-id-check.xlsx
+
+ema_list_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/ema/ema_improved_ids.xlsx
+
 ema_list_desalted:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/ema/ema-list-desalted.xlsx
@@ -275,6 +295,14 @@ pmda_list_with_combination_therapy_tags:
 pmda_list_with_curies:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/pmda/pmda-with-curies.xlsx
+
+pmda_list_improved_ids:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-improved-ids.xlsx
+
+pmda_list_with_llm_id_check:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/pmda/pmda-llm-id-check.xlsx
 
 pmda_list_with_approval_tags:
   type: pandas.ExcelDataset
@@ -460,27 +488,97 @@ drug_list_atc:
 
 
 # Post-enrichment final list
-drug_list_with_category_tags:
+drug_list_with_radioisotope_tags:
   type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-category-tags.tsv
+  filepath: data/02_intermediate/drug-list-with-radioisotope-tags.tsv
   load_args:
     sep: "\t"
   save_args:
     sep: "\t"
 
-drug_list_corrected_approval_tags_usa:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/drug_list_corrected_approval_tags_usa.xlsx
+drug_list_with_allergen_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-allergen-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
 
-drug_list_corrected_approval_tags_europe:
+drug_list_with_metallic_salt_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-metallic-salt-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_with_no_therapeutic_value_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-no-therapeutic-value-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+# drug_list_with_no_therapeutic_value_tags_test:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-no-therapeutic-value-tags-small-test.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
+
+drug_list_with_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_with_tags_cleaned:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-tags-cleaned.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+test:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/batch_enrichment_test.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+test_2:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/batch_enrichment_test_2.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_with_vaccine_antigen_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-vaccine-antigen.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_with_ec_tags:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/drug-list-with-ec-tags.tsv
+  load_args:
+    sep: "\t"
+  save_args:
+    sep: "\t"
+
+drug_list_corrected_approval_tags:
   type: pandas.ExcelDataset
-  filepath: data/02_intermediate/drug_list_corrected_approval_tags_europe.xlsx
-drug_list_corrected_approval_tags_japan:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/drug_list_corrected_approval_tags_japan.xlsx
-drug_list_corrected_approval_tags_india:
-  type: pandas.ExcelDataset
-  filepath: data/02_intermediate/drug_list_corrected_approval_tags_india.xlsx
+  filepath: data/02_intermediate/drug_list_corrected_approval_tags.xlsx
 
 drug_list_final:
   type: pandas.CSVDataset

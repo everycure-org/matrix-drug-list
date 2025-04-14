@@ -5,50 +5,6 @@ def create_pipeline(**kwargs) -> Pipeline:
     
     return pipeline(
         [
-            # node(
-            #     func=nodes.generate_ob_list,
-            #     inputs=
-            #             ["orange-book-products", 
-            #             "fda_exclusions", 
-            #             "fda_ob_split_exclusions",
-            #             "params:desalting_params",
-            #             "params:name_resolver_params",
-            #             "params:approval_tags.approval_tag_usa"],
-                         
-            #     outputs= "orange_book_list",
-            #     name = "generate-orange-book-list-node"
-            # ),
-            
-            # node(
-            #     func=nodes.generate_ema_list,
-            #     inputs=
-            #             ["ema_raw_data_set", 
-            #             "ema_exclusions", 
-            #             "ema_split_exclusions",
-            #             "params:desalting_params",
-            #             "params:name_resolver_params",
-            #             "params:approval_tags.approval_tag_europe"],  
-            #     outputs= "ema_list",
-            #     name = "generate-ema-list-node"
-            # ),
-
-            # node(
-            #     func=nodes.generate_pmda_list,
-            #     inputs=
-            #             ["pmda_raw_data_set", 
-            #             "pmda_exclusions", 
-            #             "pmda_split_exclusions",
-            #             "params:desalting_params",
-            #             "params:name_resolver_params",
-            #             "params:approval_tags.approval_tag_japan"],
-                         
-            #     outputs= "pmda_list",
-            #     name = "generate-pmda-list-node"
-            # ),
-
-
-
-
             # PURPLE BOOK BUILD
             node(
                 func=nodes.create_standardized_columns,
@@ -127,9 +83,36 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'add-ingredient-ids-purplebook'
             ),
             node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "purple_book_list_with_ingredient_ids",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "purple_book_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-purplebook"
+            ),
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "purple_book_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag_drug",
+                    "params:biolink_type_drug",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_improved_column_name",
+                ],
+                outputs = "purplebook_improved_ids",
+                name = "llm-id-improvement-purplebook"
+            ),
+
+            node(
                 func=nodes.add_alternate_ids,
                 inputs=[
-                    'purple_book_list_with_ingredient_ids'
+                    'purplebook_improved_ids'
                 ],
                 outputs = 'purple_book_list',
                 name = 'add-alternate-ids-purplebook'
@@ -247,9 +230,35 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'add-ingredient-ids-ema'
             ),
             node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "ema_list_with_ingredient_ids",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "ema_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-eur"
+            ),
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "ema_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag_drug",
+                    "params:biolink_type_drug",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_improved_column_name",
+                ],
+                outputs = "ema_list_improved_ids",
+                name = "llm-id-improvement-ema"
+            ),
+            node(
                 func=nodes.add_alternate_ids,
                 inputs=[
-                    'ema_list_with_ingredient_ids'
+                    'ema_list_improved_ids',
                 ],
                 outputs = 'ema_list',
                 name = 'add-alternate-ids-ema'
@@ -385,19 +394,19 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs = [
                     "orange_book_list_with_llm_id_check",
                     "params:column_names.drug_name",
-                    "params:llm_best_id_tag",
+                    "params:llm_best_id_tag_drug",
                     "params:biolink_type_drug",
-                    "params:column_names.disease_id_column",
-                    "params:column_names.llm_true_false_column_disease",
-                    "params:column_names.llm_improved_id_column",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_improved_column_name",
                 ],
-                outputs = "dailymed_6",
+                outputs = "orange_book_list_with_improved_ids",
                 name = "llm-id-improvement"
             ),
             node(
                 func=nodes.add_alternate_ids,
                 inputs=[
-                    'orange_book_list_with_ingredient_ids'
+                    'orange_book_list_with_improved_ids'
                 ],
                 outputs = 'orange_book_list',
                 name = 'add-alternate-ids-orangebook'
@@ -497,32 +506,32 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:biolink_type_drug",
                     "params:column_names.curie_column",
                     "params:column_names.llm_true_false_column_drug",
-                    "params:column_names.llm_best_id_tag",
+                    "params:column_names.llm_improved_column_name",
                 ],
                 outputs = "india_list_improved_ids",
                 name = "llm-id-improvement-india"
             ),
             node(
-                func=nodes.add_alternate_ids,
-                inputs=[
-                    'india_list_improved_ids'
-                ],
-                outputs = 'india_list',
-                name = 'add-alternate-ids-india'
-            ),
-            node(
                 func=nodes.add_ingredient_ids,
                 inputs=[
-                    'india_list',
+                    'india_list_improved_ids',
                     'params:name_resolver_params'
                 ],
                 outputs = 'india_list_with_ingredient_ids',
                 name = 'add-ingredient-ids-india'
             ),
             node(
+                func=nodes.add_alternate_ids,
+                inputs=[
+                    'india_list_with_ingredient_ids'
+                ],
+                outputs = 'india_list',
+                name = 'add-alternate-ids-india'
+            ),
+            node(
                 func=nodes.return_final_list,
                 inputs=[
-                    'india_list_with_ingredient_ids',
+                    'india_list',
                     'params:drug_list_properties',
                     'params:approval_tags.approval_tag_india',
                     'params:additional_drug_list_properties_india'
@@ -530,48 +539,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'india_list_filtered',
                 name = 'return_final_list_india'
             ),
-            # node(
-            #     func=nodes.llm_improve_ids,
-            #     inputs = [
-            #         "india_list_with_llm_id_check",
-            #         "params:column_names.drug_name",
-            #         "params:llm_best_id_tag",
-            #         "params:biolink_type_drug",
-            #         "params:column_names.disease_id_column",
-            #         "params:column_names.llm_true_false_column_disease",
-            #         "params:column_names.llm_improved_id_column",
-            #     ],
-            #     outputs = "india_list_improved_ids",
-            #     name = "llm-id-improvement-india"
-            # ),
-           
-            # node(
-            #     func=nodes.add_ingredients,
-            #     inputs=[
-            #         'india_list_with_approval_tags',
-            #         'params:delimiters_india'
-            #     ],
-            #     outputs = 'india_list_with_ingredients',
-            #     name = 'add-ingredients-india'
-            # ),
-            # node(
-            #     func=nodes.add_ingredient_ids,
-            #     inputs=[
-            #         'india_list_with_ingredients',
-            #         'params:name_resolver_params'
-            #     ],
-            #     outputs = 'india_list_with_ingredient_ids',
-            #     name = 'add-ingredient-ids-india'
-            # ),
-            # node(
-            #     func=nodes.add_alternate_ids,
-            #     inputs=[
-            #         'india_list_with_ingredient_ids'
-            #     ],
-            #     outputs = 'india_list',
-            #     name = 'add-alternate-ids-india'
-            # ),
- 
+
  
             ##########################################################################################
             ##########################################################################################
@@ -667,15 +635,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = "russia_list_with_llm_id_check",
                 name = "nameres-auto-qc-drug-russia"
             ),
-
-            #inputs:
-            # 1. inList (df)
-            # 2. concept column name (str)
-            # 3. params (dict)
-            # 4. biolink type (str)
-            # 5. first attempt col name (str)
-            # 6. llm decision column
-            # 7. new best id column
             node(
                 func=nodes.llm_improve_ids,
                 inputs = [
@@ -685,7 +644,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:biolink_type_drug",
                     "params:column_names.curie_column",
                     "params:column_names.llm_true_false_column_drug",
-                    "params:column_names.llm_best_id_tag",
+                    "params:column_names.llm_improved_column_name",
                 ],
                 outputs = "russia_list_improved_ids",
                 name = "llm-id-improvement-russia"
@@ -709,6 +668,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'russia_list_filtered',
                 name = 'return_final_list_russia'
             ),
+
+
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
@@ -781,6 +742,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'pmda_list_with_ingredients',
                 name = 'add-ingredients-pmda'
             ),
+
             node(
                 func=nodes.add_unlisted_single_ingredients,
                 inputs=[
@@ -808,9 +770,35 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name = 'add-ingredient-ids-pmda'
             ),
             node(
+                func=nodes.check_nameres_llm,
+                inputs = [
+                    "pmda_list_with_ingredient_ids",
+                    "params:column_names.drug_name",
+                    "params:column_names.nameres_first_label",
+                    "params:id_correct_incorrect_tag_drug",
+                    "params:column_names.llm_true_false_column_drug"
+                ],
+                outputs = "pmda_list_with_llm_id_check",
+                name = "nameres-auto-qc-drug-japan"
+            ),
+            node(
+                func=nodes.llm_improve_ids,
+                inputs = [
+                    "pmda_list_with_llm_id_check",
+                    "params:column_names.drug_name",
+                    "params:llm_best_id_tag_drug",
+                    "params:biolink_type_drug",
+                    "params:column_names.curie_column",
+                    "params:column_names.llm_true_false_column_drug",
+                    "params:column_names.llm_improved_column_name",
+                ],
+                outputs = "pmda_list_improved_ids",
+                name = "llm-id-improvement-pmda"
+            ),
+            node(
                 func=nodes.add_alternate_ids,
                 inputs=[
-                    'pmda_list_with_ingredient_ids'
+                    'pmda_list_improved_ids'
                 ],
                 outputs = 'pmda_list',
                 name = 'add-alternate-ids-pmda'
@@ -826,30 +814,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'pmda_list_filtered',
                 name = 'return_final_list_pmda'
             ),
-            
-
-            # node(
-            # func=nodes.build_drug_list,
-            # inputs=
-            #         ["orange_book_list", 
-            #         "ema_list", 
-            #         "pmda_list"],
-                        
-            # outputs= "drug_list",
-            # name = "generate-drug-list-node"
-            # ),
-
-
-
-
-
-
-
-
-
-
-
-
 
             node(
                 func=nodes.merge_all_drug_lists,
@@ -865,14 +829,13 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name='merge-drug-lists'
             ),
 
-            node(
-                func=nodes.get_atc_codes_for_dataframe,
-                inputs=[
-                    "drug_list_merged"
-                ],
-                outputs = "drug_list_atc",
-                name = "get-atc-codes"
-            ),
+            ##########################################################################################
+            ##########################################################################################
+            ##########################################################################################
+
+            
+
+
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
@@ -881,63 +844,81 @@ def create_pipeline(**kwargs) -> Pipeline:
 
 
             # DRUG LIST CATEGORIZATION TAGS
-            
+
             node(
                 func=nodes.enrich_drug_list,
                 inputs=['drug_list_merged',
-                        'params:enrichment_tags',
+                        'params:enrichment_tags_radioisotope',
                         'params:llm_to_use'],
-                outputs = 'drug_list_with_category_tags',
+                outputs = 'drug_list_with_radioisotope_tags',
                 name = 'drug-list-enrichment'
             ),
-            node(
-                func=nodes.add_approval_false_tags,
-                inputs=[
-                    'drug_list_with_category_tags',
-                    'params:approval_tags.approval_tag_usa',
-                ],
-                outputs='drug_list_corrected_approval_tags_usa',
-                name = 'correct-tags-usa'
-            ),
-            node(
-                func=nodes.add_approval_false_tags,
-                inputs=[
-                    'drug_list_corrected_approval_tags_usa',
-                    'params:approval_tags.approval_tag_europe',
-                ],
-                outputs='drug_list_corrected_approval_tags_europe',
-                name = 'correct-tags-europe'
 
+
+            node(
+                func=nodes.enrich_drug_list,
+                inputs=['drug_list_with_radioisotope_tags',
+                        'params:enrichment_tag_allergen',
+                        'params:llm_to_use'],
+                outputs = 'drug_list_with_allergen_tags',
+                name = 'drug-list-enrichment-allergen'
             ),
             node(
-                func=nodes.add_approval_false_tags,
+                func=nodes.enrich_drug_list,
+                inputs=['drug_list_with_allergen_tags',
+                        'params:enrichment_tag_metallic_salt',
+                        'params:llm_to_use'],
+                outputs = 'drug_list_with_metallic_salt_tags',
+                name = 'drug-list-enrichment-metallic-salt'
+            ),
+            node(
+                func=nodes.add_tags,
                 inputs=[
-                    'drug_list_corrected_approval_tags_europe',
-                    'params:approval_tags.approval_tag_japan',
+                    "drug_list_with_metallic_salt_tags",
+                    "params:enrichment_tags_ec",
                 ],
-                outputs='drug_list_corrected_approval_tags_japan',
-                name = 'correct-tags-japan',
+                outputs="drug_list_with_tags",
+                name='batch_generate_tags'
             ),
+            node(
+                func=nodes.filter_drugs,
+                inputs="drug_list_with_tags",
+                outputs="drug_list_with_tags_cleaned",
+                name="filter_drugs",
+            ),
+
+
+            # node(
+            #     func=nodes.enrich_drug_list,
+            #     inputs=['drug_list_with_no_therapeutic_value_tags',
+            #             'params:enrichment_tag_vaccine_or_antigen',
+            #             'params:llm_to_use'],
+            #     outputs = 'drug_list_with_vaccine_antigen_tags',
+            #     name = 'drug-list-enrichment-vaccine-antigen'
+            # ),
+        
+
+            # node(
+            #     func=nodes.get_atc_codes_from_external_sources,
+            #     inputs=[
+            #         "drug_list_with_no_therapeutic_value_tags"
+            #     ],
+            #     outputs = "drug_list_atc",
+            #     name = "get-atc-codes"
+            # ),
+
+            
+
+
             node(
                 func=nodes.add_approval_false_tags,
                 inputs=[
-                    'drug_list_corrected_approval_tags_japan',
-                    'params:approval_tags.approval_tag_india',
-                ],
-                outputs='drug_list_corrected_approval_tags_india',
-                name = 'correct-tags-india',
-            ),
-            node(
-                func=nodes.add_approval_false_tags,
-                inputs=[
-                    'drug_list_corrected_approval_tags_india',
-                    'params:approval_tags.approval_tag_russia',
+                    'drug_list_with_tags_cleaned',
+                    'params:approval_tags',
                 ],
                 outputs='drug_list_final',
-                name = 'correct-tags-russia',
+                name = 'correct-approval-tags'
             ),
-            
-            
             
             # ADD SMILES STRINGS WHEN APPLICABLE
             node(

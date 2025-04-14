@@ -53,6 +53,7 @@ desalting_params:
     - MAGNESIUM
     - MANGANESE
     - POTASSIUM
+    - DIPOTASSIUM
     - ALUMINUM
     - TITANIUM
     - COPPER
@@ -394,6 +395,7 @@ name_resolver_params_local:
   id_limit: 10
   offset: 0
   biolink_type: ChemicalOrDrugOrTreatment
+
 name_reformatting_prompt: Reformat this drug name to include only active moieties separated by semicolons - return only the reformatted list with no additional text or explanations.
 
 
@@ -402,59 +404,113 @@ column_names:
   nameres_first_label: curie_label
   id_correct_incorrect_tag_drug: llm_correct_incorrect
   llm_true_false_column_drug: llm_first_curie_correct
-  llm_best_id_tag: llm_best_id
   curie_column: curie
   llm_improved_column_name: improved_id
+
 
 
 biolink_type_drug: ChemicalOrDrugOrTreatment
 
 
-
 # DRUG CATEGORY TAGS
-enrichment_tags:
+
+enrichment_tag_radioisotope:
+  diagnostic_or_radioisotope:
+      input_col: label
+      output_col: is_radioisotope_or_diagnostic_agent
+      model_params:
+        model: gpt-4o-mini
+        prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
+        temperature: 0.2
+
+
+# enrichment_tag_allergen:
+#   allergen:
+#     input_col: label
+#     output_col: is_allergen
+#     model_params:
+#       model: gpt-4o
+#       prompt: Is this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
+#       temperature: 0.2
+
+# enrichment_tag_metallic_salt:
+#   metallic_salt:
+#     input_col: label
+#     output_col: is_metallic_salt
+#     model_params:
+#       model: gpt-4o
+#       prompt: Is this drug a simple metallic salt? Return TRUE or FALSE only.
+#       temperature: 0.2
+
+# enrichment_tag_no_therapeutic_value:
+#   no_therapeutic_value:
+#     input_col: label
+#     output_col: is_no_therapeutic_value
+#     model_params:
+#       model: gpt-4o
+#       prompt: Could this drug be classified as having little therapeutic value? For example, sterile water, tryptan blue, copper, soybean oil, evans blue, and cocaine are considered low therapeutic value. Return TRUE or FALSE only.
+#       temperature: 0.2
+
+
+enrichment_tags_ec:
   steroid:
-    input_col: curie_label
+    input_col: label
     output_col: is_steroid
     model_params: 
       model: gpt-4o-mini
       prompt: Is this drug a corticosteroid drug? Return TRUE or FALSE only.
-      temperature: 0
+      temperature: 0.2
   antibiotic:
-    input_col: curie_label
+    input_col: label
     output_col: is_antimicrobial
     model_params:
       model: gpt-4o
       prompt: "Are any of these drugs in any of the following drug classes: an antibiotic drug, an antiviral drug (usually end in '-vir' or '-udine'), an antiretroviral drug, an antiparasitic drug, or an antifungal drug? Return TRUE or FALSE only."
-      temperature: 0
+      temperature: 0.2
   chemotherapy:
-    input_col: curie_label
+    input_col: label
     output_col: is_chemotherapy
     model_params:
       model: gpt-4o-mini
       prompt: Is this drug a cytotoxic chemotherapy drug used to treat cancer? Return TRUE or FALSE only.
-      temperature: 0
+      temperature: 0.2
   glucose_regulator:
-    input_col: curie_label
+    input_col: label
     output_col: is_glucose_regulator
     model_params:
       model: gpt-4o-mini
       prompt: Is this drug a drug which is primarily used to regulate glucose levels? Return TRUE or FALSE only.
-      temperature: 0
-  diagnostic_or_radioisotope:
-    input_col: curie_label
-    output_col: is_radioisotope_or_diagnostic_agent
+      temperature: 0.2
+  vaccine_or_antigen:
+    input_col: label
+    output_col: is_vaccine_or_antigen
+    model_params:
+      model: gpt-4o-mini
+      prompt: Is this drug a vaccine or antigen? Return TRUE or FALSE only.
+      temperature: 0.2
+  no_therapeutic_value:
+    input_col: label
+    output_col: is_no_therapeutic_value
     model_params:
       model: gpt-4o
-      prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
-      temperature: 0
+      prompt: Could this drug be classified as having little potential therapeutic value? For example, sterile water, tryptan blue, copper, and soybean oil are considered low potential therapeutic value. Unusual drugs may still have therapeutic value - do not discount drugs just because they are not approve in the USA or Europe. Return TRUE or FALSE only.
+      temperature: 0.2
+  metallic_salt:
+    input_col: label
+    output_col: is_metallic_salt
+    model_params:
+      model: gpt-4o
+      prompt: Is this drug a simple metallic salt? Return TRUE or FALSE only.
+      temperature: 0.2
   allergen:
-    input_col: curie_label
+    input_col: label
     output_col: is_allergen
     model_params:
       model: gpt-4o
       prompt: Is this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
-      temperature: 0
+      temperature: 0.2
+
+
 
 
 id_correct_incorrect_tag_drug:
@@ -470,27 +526,27 @@ llm_best_id_tag_drug:
     temperature: 0
 
 #options: localLlama openai
-llm_to_use: localLlama
+llm_to_use: openai
 
 
 # APPROVAL TAGS
 approval_tags:
-  approval_tag_usa: "approved_usa"
-  approval_tag_europe: "approved_eu"
-  approval_tag_japan: "approved_japan"
-  approval_tag_india: "approved_india"
-  approval_tag_russia: "approved_russia"
+  - "approved_usa"
+  - "approved_eu"
+  - "approved_japan"
+  - "approved_india"
+  - "approved_russia"
 
 
 # LIST PROPERTIES
 drug_list_properties:
   - drug_name
-  - curie
-  - curie_label
+  - improved_id
   - ingredients_list
   - ingredient_ids
   - combination_therapy
   - alternate_ids
+  - label
 
 additional_drug_list_properties_usa:
   - marketing_status_usa

@@ -1,1 +1,1 @@
-{"drug_list_merged": {"rows": 3914, "columns": 14, "file_size": 1329057}, "drug_list_atc": {"rows": 3914, "columns": 15, "file_size": 1356201}}
+{"drug_list_with_tags_cleaned": {"rows": 3923, "columns": 23, "file_size": 4108730}, "drug_list_final": {"rows": 3923, "columns": 23, "file_size": 4179793}}
