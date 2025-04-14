@@ -1824,4 +1824,5 @@ def filter_drugs(in_df:pd.DataFrame) -> pd.DataFrame:
         if row['is_allergen'] or row['is_radioisotope_or_diagnostic_agent'] or row['is_no_therapeutic_value']:
             indices_to_remove.append(idx)
     in_df.drop(indices_to_remove, axis=0, inplace=True)
+    in_df = in_df.rename(columns={'improved_id': 'curie', 'label': 'curie_label'})
     return in_df
