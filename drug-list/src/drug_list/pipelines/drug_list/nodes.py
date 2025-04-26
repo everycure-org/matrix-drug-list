@@ -14,6 +14,8 @@ import numpy as np
 from functools import cache
 import asyncio
 from googletrans import Translator
+import xml.etree.ElementTree as ET
+
 
 import ast
 import time
@@ -1172,412 +1174,301 @@ def translate_dataframe_columns(df, source_lang='ru', dest_lang='en'):
 ## PRIMARY ATC  (FASTER) ######################################################
 ###############################################################################
 
-
-
-# def get_atc_from_rxnorm(rxnorm_id):
-#     """Get ATC code from RxNorm ID using the RxNav API"""
-#     try:
-#         # First, validate if the input is a valid RxNorm ID (numeric)
-#         if not rxnorm_id.isdigit():
-#             return None
+def get_atc_from_rxnorm(rxnorm_id):
+    """Get ATC code from RxNorm ID using the RxNav API"""
+    try:
+        # First, validate if the input is a valid RxNorm ID (numeric)
+        if not rxnorm_id.isdigit():
+            return None
             
-#         # Call the RxNav API to get ATC codes
-#         response = requests.get(f"https://rxnav.nlm.nih.gov/REST/rxcui/{rxnorm_id}/property?propName=ATC")
+        # Call the RxNav API to get ATC codes
+        response = requests.get(f"https://rxnav.nlm.nih.gov/REST/rxcui/{rxnorm_id}/property?propName=ATC")
         
-#         if response.status_code == 200:
-#             data = response.json()
-#             prop_concept_group = data.get('propConceptGroup', {})
-#             if prop_concept_group:
-#                 prop_concepts = prop_concept_group.get('propConcept', [])
-#                 atc_codes = [prop['propValue'] for prop in prop_concepts if prop.get('propName') == 'ATC']
-#                 return atc_codes if atc_codes else None
-#         return None
-#     except Exception as e:
-#         print(f"Error getting ATC from RxNorm for {rxnorm_id}: {str(e)}")
-#         return None
+        if response.status_code == 200:
+            data = response.json()
+            prop_concept_group = data.get('propConceptGroup', {})
+            if prop_concept_group:
+                prop_concepts = prop_concept_group.get('propConcept', [])
+                atc_codes = [prop['propValue'] for prop in prop_concepts if prop.get('propName') == 'ATC']
+                return atc_codes if atc_codes else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from RxNorm for {rxnorm_id}: {str(e)}")
+        return None
 
-# def get_atc_from_chembl(chembl_id):
-#     """Get ATC code from ChEMBL ID using the ChEMBL API"""
-#     try:
-#         # Remove the 'CHEMBL.COMPOUND:' prefix if present
-#         if 'CHEMBL.COMPOUND:' in chembl_id:
-#             chembl_id = chembl_id.split(':')[1]
+def get_atc_from_chebi(chebi_id):
+    """Get ATC code from ChEBI ID using the ChEBI API"""
+    try:
+        # Remove the 'CHEBI:' prefix if present
+        if 'CHEBI:' in chebi_id:
+            chebi_id = chebi_id.split(':')[1]
         
-#         # Call the ChEMBL API
-#         response = requests.get(f"https://www.ebi.ac.uk/chembl/api/data/molecule/{chembl_id}.json")
+        # Call the ChEBI API
+        response = requests.get(f"https://www.ebi.ac.uk/webservices/chebi/2.0/test/getCompleteEntity?chebiId={chebi_id}")
         
-#         if response.status_code == 200:
-#             data = response.json()
-#             atc_classifications = data.get('atc_classifications', [])
-#             return atc_classifications if atc_classifications else None
-#         return None
-#     except Exception as e:
-#         print(f"Error getting ATC from ChEMBL for {chembl_id}: {str(e)}")
-#         return None
-
-# def get_atc_from_pubchem(pubchem_id):
-#     """Get ATC code from PubChem ID using PubChem PUG REST API"""
-#     try:
-#         # Remove the 'PUBCHEM.COMPOUND:' prefix if present
-#         if 'PUBCHEM.COMPOUND:' in pubchem_id:
-#             pubchem_id = pubchem_id.split(':')[1]
+        if response.status_code == 200:
+            # Parse the XML response
+            root = ET.fromstring(response.content)
             
-#         # The PubChem API doesn't directly provide ATC codes, so we'll use the classification browser
-#         response = requests.get(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{pubchem_id}/JSON")
-        
-#         if response.status_code == 200:
-#             data = response.json()
-#             sections = data.get('Record', {}).get('Section', [])
+            # Check for ATC codes in the cross-references
+            atc_classifications = []
+            for ref in root.findall('.//DatabaseAccession'):
+                if ref.find('..//Data').text == 'ATC':
+                    atc_classifications.append(ref.text)
             
-#             # Look for ATC codes in the classifications
-#             for section in sections:
-#                 if section.get('TOCHeading') == 'Classification':
-#                     subsections = section.get('Section', [])
-#                     for subsection in subsections:
-#                         if 'ATC' in subsection.get('TOCHeading', ''):
-#                             information = subsection.get('Information', [])
-#                             for info in information:
-#                                 value = info.get('Value', {}).get('StringWithMarkup', [])
-#                                 atc_codes = []
-#                                 for val in value:
-#                                     atc_match = re.search(r'[A-Z]\d\d[A-Z][A-Z]\d\d', val.get('String', ''))
-#                                     if atc_match:
-#                                         atc_codes.append(atc_match.group(0))
-#                                 if atc_codes:
-#                                     return atc_codes
-#         return None
-#     except Exception as e:
-#         print(f"Error getting ATC from PubChem for {pubchem_id}: {str(e)}")
-#         return None
+            return atc_classifications if atc_classifications else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from ChEBI for {chebi_id}: {str(e)}")
+        return None
 
-# def get_atc_from_drugcentral(drugcentral_id):
-#     """Get ATC code from DrugCentral ID using the DrugCentral API"""
-#     try:
-#         # Extract the numeric ID if it has a prefix
-#         if 'DrugCentral:' in drugcentral_id:
-#             drugcentral_id = drugcentral_id.split(':')[1]
+def get_atc_from_chembl(chembl_id):
+    """Get ATC code from ChEMBL ID using the ChEMBL API"""
+    try:
+        # Remove the 'CHEMBL.COMPOUND:' prefix if present
+        if 'CHEMBL.COMPOUND:' in chembl_id:
+            chembl_id = chembl_id.split(':')[1]
+        
+        # Call the ChEMBL API
+        response = requests.get(f"https://www.ebi.ac.uk/chembl/api/data/molecule/{chembl_id}.json")
+        
+        if response.status_code == 200:
+            data = response.json()
+            atc_classifications = data.get('atc_classifications', [])
+            return atc_classifications if atc_classifications else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from ChEMBL for {chembl_id}: {str(e)}")
+        return None
+
+def get_atc_from_pubchem(pubchem_id):
+    """Get ATC code from PubChem ID using PubChem PUG REST API"""
+    try:
+        # Remove the 'PUBCHEM.COMPOUND:' prefix if present
+        if 'PUBCHEM.COMPOUND:' in pubchem_id:
+            pubchem_id = pubchem_id.split(':')[1]
             
-#         # Call the DrugCentral API
-#         response = requests.get(f"https://drugcentral.org/api/drugcentral/structures?q={drugcentral_id}")
+        # The PubChem API doesn't directly provide ATC codes, so we'll use the classification browser
+        response = requests.get(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{pubchem_id}/JSON")
         
-#         if response.status_code == 200:
-#             data = response.json()
-#             if data and isinstance(data, list) and len(data) > 0:
-#                 drug_data = data[0]
-#                 atc_codes = []
-#                 for annotation in drug_data.get('annotations', []):
-#                     if annotation.get('type') == 'ATC':
-#                         atc_codes.append(annotation.get('value'))
-#                 return atc_codes if atc_codes else None
-#         return None
-#     except Exception as e:
-#         print(f"Error getting ATC from DrugCentral for {drugcentral_id}: {str(e)}")
-#         return None
-
-# def get_atc_from_whocc(drug_name):
-#     """Get ATC code from WHO Collaborating Centre for Drug Statistics Methodology"""
-#     try:
-#         # Encode the drug name for URL
-#         encoded_name = quote(drug_name)
-        
-#         # Search the WHO ATC database
-#         response = requests.get(f"https://www.whocc.no/atc_ddd_index/?name={encoded_name}")
-        
-#         if response.status_code == 200:
-#             # Parse HTML response to extract ATC codes
-#             # This is a placeholder as proper HTML parsing would be needed
-#             atc_matches = re.findall(r'[A-Z]\d\d[A-Z][A-Z]\d\d', response.text)
-#             return atc_matches if atc_matches else None
-#         return None
-#     except Exception as e:
-#         print(f"Error getting ATC from WHO for {drug_name}: {str(e)}")
-#         return None
-
-# def extract_id_from_curie(id_string, prefix):
-#     """Extract specific ID from a CURIE string"""
-#     for item in id_string.split(','):
-#         item = item.strip()
-#         if item.startswith(prefix):
-#             return item
-#     return None
-
-# def get_chebi_drugcentral_xrefs(chebi_id):
-#     """
-#     Get DrugCentral XREFs from a CHEBI ID using the CHEBI API or OLS
-    
-#     Parameters:
-#     chebi_id (str): CHEBI ID (format: CHEBI:XXXXX)
-    
-#     Returns:
-#     list: List of DrugCentral IDs referenced by this CHEBI entry
-#     """
-#     try:
-#         # Extract the numeric part if needed
-#         if ':' in chebi_id:
-#             chebi_num = chebi_id.split(':')[1]
-#         else:
-#             chebi_num = chebi_id
+        if response.status_code == 200:
+            data = response.json()
+            sections = data.get('Record', {}).get('Section', [])
             
-#         # Use the EBI OLS API to get cross-references
-#         response = requests.get(f"https://www.ebi.ac.uk/ols/api/ontologies/chebi/terms/http%253A%252F%252Fpurl.obolibrary.org%252Fobo%252FCHEBI_{chebi_num}")
-        
-#         if response.status_code == 200:
-#             data = response.json()
-#             xrefs = data.get('annotation', {}).get('database_cross_reference', [])
+            # Look for ATC codes in the classifications
+            for section in sections:
+                if section.get('TOCHeading') == 'Classification':
+                    subsections = section.get('Section', [])
+                    for subsection in subsections:
+                        if 'ATC' in subsection.get('TOCHeading', ''):
+                            information = subsection.get('Information', [])
+                            for info in information:
+                                value = info.get('Value', {}).get('StringWithMarkup', [])
+                                atc_codes = []
+                                for val in value:
+                                    atc_match = re.search(r'[A-Z]\d\d[A-Z][A-Z]\d\d', val.get('String', ''))
+                                    if atc_match:
+                                        atc_codes.append(atc_match.group(0))
+                                if atc_codes:
+                                    return atc_codes
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from PubChem for {pubchem_id}: {str(e)}")
+        return None
+
+def get_atc_from_drugcentral(drugcentral_id):
+    """Get ATC code from DrugCentral ID using the DrugCentral API"""
+    try:
+        # Extract the numeric ID if it has a prefix
+        if 'DrugCentral:' in drugcentral_id:
+            drugcentral_id = drugcentral_id.split(':')[1]
             
-#             # Filter for DrugCentral references
-#             drugcentral_ids = []
-#             for xref in xrefs:
-#                 if isinstance(xref, str) and xref.startswith('DrugCentral:'):
-#                     drugcentral_ids.append(xref)
-            
-#             return drugcentral_ids
-#         return []
-#     except Exception as e:
-#         print(f"Error getting DrugCentral XREFs from CHEBI for {chebi_id}: {str(e)}")
-#         return []
-
-# def get_atc_for_row(row):
-#     """Process a single row to find ATC code"""
-#     # Convert string representation of list to actual list if needed
-#     if isinstance(row['alternate_ids'], str):
-#         try:
-#             alt_ids = ast.literal_eval(row['alternate_ids'])
-#         except (SyntaxError, ValueError):
-#             alt_ids = [id.strip() for id in row['alternate_ids'].strip('[]').split(',')]
-#     else:
-#         alt_ids = row['alternate_ids']
-    
-#     # Add the curie to the list of IDs if not already there
-#     if row['improved_id'] not in alt_ids:
-#         alt_ids.append(row['curie'])
-    
-#     # Try each source in order of reliability/accessibility
-#     for id_item in alt_ids:
-#         id_item = id_item.strip("'\" ")
+        # Call the DrugCentral API
+        response = requests.get(f"https://drugcentral.org/api/drugcentral/structures?q={drugcentral_id}")
         
-#         # Try ChEMBL
-#         if 'CHEMBL.COMPOUND:' in id_item:
-#             atc = get_atc_from_chembl(id_item)
-#             if atc:
-#                 return atc
-        
-#         # Try PubChem
-#         if 'PUBCHEM.COMPOUND:' in id_item:
-#             atc = get_atc_from_pubchem(id_item)
-#             if atc:
-#                 return atc
-        
-#         # Try DrugCentral
-#         if 'DrugCentral:' in id_item:
-#             atc = get_atc_from_drugcentral(id_item)
-#             if atc:
-#                 return atc
-    
-#     # If no ATC found yet, check if there are CHEBI IDs and try to get DrugCentral XREFs
-#     chebi_ids = [id_item.strip("'\" ") for id_item in alt_ids if 'CHEBI:' in id_item]
-#     for chebi_id in chebi_ids:
-#         # Get DrugCentral XREFs from CHEBI
-#         drugcentral_refs = get_chebi_drugcentral_xrefs(chebi_id)
-        
-#         # Try to get ATC codes from each DrugCentral reference
-#         for dc_ref in drugcentral_refs:
-#             atc = get_atc_from_drugcentral(dc_ref)
-#             if atc:
-#                 return atc
-    
-#     # If we have a name column, try WHO CC as last resort
-#     if 'name' in row and row['name']:
-#         atc = get_atc_from_whocc(row['name'])
-#         if atc:
-#             return atc
-    
-#     return None
+        if response.status_code == 200:
+            data = response.json()
+            if data and isinstance(data, list) and len(data) > 0:
+                drug_data = data[0]
+                atc_codes = []
+                for annotation in drug_data.get('annotations', []):
+                    if annotation.get('type') == 'ATC':
+                        atc_codes.append(annotation.get('value'))
+                return atc_codes if atc_codes else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from DrugCentral for {drugcentral_id}: {str(e)}")
+        return None
 
-# def get_atc_codes_for_dataframe(df, max_workers=5):
-#     """
-#     Get ATC classifications for all drugs in a dataframe
-    
-#     Parameters:
-#     df (pandas.DataFrame): DataFrame with 'curie' and 'alternate_ids' columns
-#     max_workers (int): Maximum number of parallel workers for API calls
-    
-#     Returns:
-#     pandas.DataFrame: Original dataframe with new 'atc_codes' column
-#     """
-#     # Make a copy to avoid modifying the original
-#     result_df = df.copy()
-    
-#     # Process rows in parallel for efficiency
-#     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-#         # Submit all jobs
-#         future_to_index = {executor.submit(get_atc_for_row, row): i 
-#                           for i, row in df.iterrows()}
+def get_atc_from_whocc(drug_name):
+    """Get ATC code from WHO Collaborating Centre for Drug Statistics Methodology"""
+    try:
+        # Encode the drug name for URL
+        encoded_name = quote(drug_name)
         
-#         # Collect results
-#         atc_codes = [None] * len(df)
-#         for future in tqdm(future_to_index):
-#             index = future_to_index[future]
-#             try:
-#                 atc_codes[index] = future.result()
-#             except Exception as e:
-#                 print(f"Error processing row {index}: {str(e)}")
-#                 atc_codes[index] = None
-    
-#     # Add results to dataframe
-#     result_df['atc_codes'] = atc_codes
-    
-#     return result_df
+        # Search the WHO ATC database
+        response = requests.get(f"https://www.whocc.no/atc_ddd_index/?name={encoded_name}")
+        
+        if response.status_code == 200:
+            # Parse HTML response to extract ATC codes
+            # This is a placeholder as proper HTML parsing would be needed
+            atc_matches = re.findall(r'[A-Z]\d\d[A-Z][A-Z]\d\d', response.text)
+            return atc_matches if atc_matches else None
+        return None
+    except Exception as e:
+        print(f"Error getting ATC from WHO for {drug_name}: {str(e)}")
+        return None
 
+def extract_id_from_curie(id_string, prefix):
+    """Extract specific ID from a CURIE string"""
+    for item in id_string.split(','):
+        item = item.strip()
+        if item.startswith(prefix):
+            return item
+    return None
 
-import pandas as pd
-import requests
-import ast
-import re
-import time
-from urllib.parse import quote
-from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm  # For progress tracking (optional)
-
-def get_atc_codes_from_external_sources(df, num_workers=16, rate_limit_delay=1.0):
+def get_chebi_drugcentral_xrefs(chebi_id):
     """
-    Query external databases in parallel to find ATC codes for compounds based on their identifiers
+    Get DrugCentral XREFs from a CHEBI ID using the CHEBI API or OLS
     
     Parameters:
-    -----------
-    df : pandas.DataFrame
-        DataFrame containing 'improved_id' and 'alternate_ids' columns
-    num_workers : int
-        Number of parallel workers
-    rate_limit_delay : float
-        Delay between API requests in seconds to avoid hitting rate limits
-        
+    chebi_id (str): CHEBI ID (format: CHEBI:XXXXX)
+    
     Returns:
-    --------
-    pandas.DataFrame
-        Original DataFrame with additional columns for ATC codes
+    list: List of DrugCentral IDs referenced by this CHEBI entry
     """
-    # Parse alternate_ids if they're stored as strings
-    def parse_alternate_ids(alternate_ids):
-        if isinstance(alternate_ids, str):
-            try:
-                return ast.literal_eval(alternate_ids)
-            except:
-                return []
-        return alternate_ids if isinstance(alternate_ids, list) else []
-    
-    df['alternate_ids_list'] = df['alternate_ids'].apply(parse_alternate_ids)
-    
-    # Function to extract identifiers by source
-    def extract_ids_by_source(alt_ids):
-        id_dict = {}
-        for id_str in alt_ids:
-            if ':' in id_str:
-                source, id_val = id_str.split(':', 1)
-                if source not in id_dict:
-                    id_dict[source] = []
-                id_dict[source].append(id_val)
-        return id_dict
-    
-    df['ids_by_source'] = df['alternate_ids_list'].apply(extract_ids_by_source)
-    
-    # Function to process a single row
-    def process_row(row_data):
-        idx, row = row_data
-        atc_codes = []
-        ids_by_source = row['ids_by_source']
+    try:
+        # Extract the numeric part if needed
+        if ':' in chebi_id:
+            chebi_num = chebi_id.split(':')[1]
+        else:
+            chebi_num = chebi_id
+            
+        # Use the EBI OLS API to get cross-references
+        response = requests.get(f"https://www.ebi.ac.uk/ols/api/ontologies/chebi/terms/http%253A%252F%252Fpurl.obolibrary.org%252Fobo%252FCHEBI_{chebi_num}")
         
-        # Try DrugBank first (most reliable for ATC codes)
-        if 'DRUGBANK' in ids_by_source:
-            for db_id in ids_by_source['DRUGBANK']:
-                try:
-                    response = requests.get(f"https://go.drugbank.com/drugs/{db_id}.json")
-                    if response.status_code == 200:
-                        data = response.json()
-                        if 'atc_codes' in data:
-                            atc_codes.extend(data['atc_codes'])
-                    time.sleep(rate_limit_delay)  # Respect rate limits
-                except Exception as e:
-                    print(f"Error querying DrugBank for {db_id}: {e}")
-        
-        # Try PubChem
-        if not atc_codes and 'PUBCHEM.COMPOUND' in ids_by_source:
-            for pc_id in ids_by_source['PUBCHEM.COMPOUND']:
-                try:
-                    response = requests.get(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pc_id}/classification/JSON")
-                    if response.status_code == 200:
-                        data = response.json()
-                        if 'Hierarchy' in data:
-                            for hierarchy in data['Hierarchy']:
-                                if 'ATC' in hierarchy.get('SourceName', ''):
-                                    atc_codes.append(hierarchy.get('SourceID', ''))
-                    time.sleep(rate_limit_delay)
-                except Exception as e:
-                    print(f"Error querying PubChem for {pc_id}: {e}")
-        
-        # Try DrugCentral
-        if not atc_codes and 'DrugCentral' in ids_by_source:
-            for dc_id in ids_by_source['DrugCentral']:
-                try:
-                    response = requests.get(f"https://drugcentral.org/api/drug/{dc_id}")
-                    if response.status_code == 200:
-                        data = response.json()
-                        if 'atc_code' in data:
-                            atc_codes.extend(data['atc_code'])
-                    time.sleep(rate_limit_delay)
-                except Exception as e:
-                    print(f"Error querying DrugCentral for {dc_id}: {e}")
+        if response.status_code == 200:
+            data = response.json()
+            xrefs = data.get('annotation', {}).get('database_cross_reference', [])
+            
+            # Filter for DrugCentral references
+            drugcentral_ids = []
+            for xref in xrefs:
+                if isinstance(xref, str) and xref.startswith('DrugCentral:'):
+                    drugcentral_ids.append(xref)
+            
+            return drugcentral_ids
+        return []
+    except Exception as e:
+        print(f"Error getting DrugCentral XREFs from CHEBI for {chebi_id}: {str(e)}")
+        return []
+
+def get_atc_for_row(row, dict):
+    """Process a single row to find ATC code"""
+    
+    # if curie is in the dict
+    if row['curie'] in dict:
+        return [dict[row['curie']]]
+
+    # Convert string representation of list to actual list if needed
+    if isinstance(row['alternate_ids'], str):
+        try:
+            alt_ids = ast.literal_eval(row['alternate_ids'])
+        except (SyntaxError, ValueError):
+            alt_ids = [id.strip() for id in row['alternate_ids'].strip('[]').split(',')]
+    else:
+        alt_ids = row['alternate_ids']
+
+    # Add the curie to the list of IDs if not already there
+    if row['curie'] not in alt_ids:
+        alt_ids.append(row['curie'])
+    
+    # Try each source in order of reliability/accessibility
+    for id_item in alt_ids:
+        id_item = id_item.strip("'\" ")
+
+        if 'CHEBI' in id_item:
+            atc = get_atc_from_chebi(id_item)
+            if atc:
+                return atc
         
         # Try ChEMBL
-        if not atc_codes and 'CHEMBL.COMPOUND' in ids_by_source:
-            for chembl_id in ids_by_source['CHEMBL.COMPOUND']:
-                try:
-                    response = requests.get(f"https://www.ebi.ac.uk/chembl/api/data/molecule/{chembl_id}.json")
-                    if response.status_code == 200:
-                        data = response.json()
-                        if 'atc_classifications' in data:
-                            atc_codes.extend(data['atc_classifications'])
-                    time.sleep(rate_limit_delay)
-                except Exception as e:
-                    print(f"Error querying ChEMBL for {chembl_id}: {e}")
-                    
-        # Try KEGG (using CAS as the identifier)
-        if not atc_codes and 'CAS' in ids_by_source:
-            for cas_id in ids_by_source['CAS']:
-                try:
-                    response = requests.get(f"https://rest.kegg.jp/find/drug/{cas_id}")
-                    if response.status_code == 200:
-                        kegg_drugs = [line.split("\t")[0].replace("dr:", "") for line in response.text.strip().split("\n") if line]
-                        
-                        for kegg_drug in kegg_drugs:
-                            drug_response = requests.get(f"https://rest.kegg.jp/get/{kegg_drug}")
-                            if drug_response.status_code == 200:
-                                atc_match = re.search(r'ATC code: ([A-Z]\d{2}[A-Z]{2}\d{2})', drug_response.text)
-                                if atc_match:
-                                    atc_codes.append(atc_match.group(1))
-                            time.sleep(rate_limit_delay)
-                except Exception as e:
-                    print(f"Error querying KEGG for {cas_id}: {e}")
+        if 'CHEMBL.COMPOUND:' in id_item:
+            atc = get_atc_from_chembl(id_item)
+            if atc:
+                return atc
         
-        # Return the row index and the found ATC codes
-        return idx, atc_codes
-    
-    # Process rows in parallel
-    results = {}
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
-        # Create a list of tasks
-        future_to_idx = {executor.submit(process_row, (idx, row)): idx 
-                         for idx, row in df.iterrows()}
+        # Try PubChem
+        if 'PUBCHEM.COMPOUND:' in id_item:
+            atc = get_atc_from_pubchem(id_item)
+            if atc:
+                return atc
         
-        # Process results as they complete (with optional progress bar)
-        for future in tqdm(future_to_idx, total=len(df), desc="Processing compounds"):
-            idx, atc_codes = future.result()
-            results[idx] = atc_codes
+        # Try DrugCentral
+        if 'DrugCentral:' in id_item:
+            atc = get_atc_from_drugcentral(id_item)
+            if atc:
+                return atc
     
-    # Update the DataFrame with results
-    df['atc_codes'] = pd.Series(results)
+    # If no ATC found yet, check if there are CHEBI IDs and try to get DrugCentral XREFs
+    chebi_ids = [id_item.strip("'\" ") for id_item in alt_ids if 'CHEBI:' in id_item]
+    for chebi_id in chebi_ids:
+        # Get DrugCentral XREFs from CHEBI
+        drugcentral_refs = get_chebi_drugcentral_xrefs(chebi_id)
+        
+        # Try to get ATC codes from each DrugCentral reference
+        for dc_ref in drugcentral_refs:
+            atc = get_atc_from_drugcentral(dc_ref)
+            if atc:
+                return atc
     
-    # Function to break down ATC code into levels
+    # If we have a name column, try WHO CC as last resort
+    if 'name' in row and row['name']:
+        atc = get_atc_from_whocc(row['name'])
+        if atc:
+            return atc
+    
+    return None
+
+
+def get_atc_codes_for_dataframe(df, atc_standard, max_workers=5):
+    """
+    Get ATC classifications for all drugs in a dataframe
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame with 'curie' and 'alternate_ids' columns
+    max_workers (int): Maximum number of parallel workers for API calls
+    
+    Returns:
+    pandas.DataFrame: Original dataframe with new 'atc_codes' column
+    """
+    atc_standard_dict_id_to_code = {}
+    for idx, row in tqdm(atc_standard.iterrows(), total=len(atc_standard), desc="building ATC dictionary of IDs"):
+        if row['normalized_id'] != "E":
+            atc_standard_dict_id_to_code[row['normalized_id']]=row['Class ID'].replace("http://purl.bioontology.org/ontology/ATC/","")
+    # Make a copy to avoid modifying the original
+    result_df = df.copy()
+    
+    # Process rows in parallel for efficiency
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all jobs
+        future_to_index = {executor.submit(get_atc_for_row, row, atc_standard_dict_id_to_code): i 
+                          for i, row in df.iterrows()}
+        
+        # Collect results
+        atc_codes = [None] * len(df)
+        for future in tqdm(future_to_index):
+            index = future_to_index[future]
+            try:
+                atc_codes[index] = future.result()
+            except Exception as e:
+                print(f"Error processing row {index}: {str(e)}")
+                atc_codes[index] = None
+    
+    # Add results to dataframe
+    result_df['atc_codes'] = atc_codes
+    
+     # Function to break down ATC code into levels
     def break_down_atc(atc_code):
         if not atc_code:
             return None, None, None, None, None
@@ -1603,37 +1494,201 @@ def get_atc_codes_from_external_sources(df, num_workers=16, rate_limit_delay=1.0
     def get_top_atc(atc_codes):
         return atc_codes[0] if isinstance(atc_codes, list) and atc_codes else None
     
-    df['atc_main'] = df['atc_codes'].apply(get_top_atc)
+    result_df['atc_main'] = result_df['atc_codes'].apply(get_top_atc)
     
     # Break down the main ATC code into levels
-    df[['atc_level1', 'atc_level2', 'atc_level3', 'atc_level4', 'atc_level5']] = pd.DataFrame(
-        df['atc_main'].apply(break_down_atc).tolist(), 
-        index=df.index
+    result_df[['atc_level1', 'atc_level2', 'atc_level3', 'atc_level4', 'atc_level5']] = pd.DataFrame(
+        result_df['atc_main'].apply(break_down_atc).tolist(), 
+        index=result_df.index
     )
     
-    return df
+    return result_df
 
-# def get_atc(instring:str) -> str:
-#     types = ['CHEBI', '']
 
-# def get_xrefs(CHEBI_ID:str) -> list[str]:
-#     # code to seek CHEBI get request json
-#     # code to find section with xrefs
-#     # code to list and return xrefs by type
 
-# def find_atc(CHEBI_ID:str) -> str:
-#     atc = None
-#     atc = get_atc(CHEBI_ID)
-#     if atc:
-#         return atc
-#     if not atc:
-#         xrefs = get_xrefs(CHEBI_ID)
-#         for xref in xrefs:
-#             atc = get_atc(xref)
-#             if atc
-#             return atc
+
+# import pandas as pd
+# import requests
+# import ast
+# import re
+# import time
+# from urllib.parse import quote
+# from concurrent.futures import ThreadPoolExecutor
+# from tqdm import tqdm  # For progress tracking (optional)
+
+# def get_atc_codes_from_external_sources(df, num_workers=16, rate_limit_delay=1.0):
+#     """
+#     Query external databases in parallel to find ATC codes for compounds based on their identifiers
     
-#     return None
+#     Parameters:
+#     -----------
+#     df : pandas.DataFrame
+#         DataFrame containing 'improved_id' and 'alternate_ids' columns
+#     num_workers : int
+#         Number of parallel workers
+#     rate_limit_delay : float
+#         Delay between API requests in seconds to avoid hitting rate limits
+        
+#     Returns:
+#     --------
+#     pandas.DataFrame
+#         Original DataFrame with additional columns for ATC codes
+#     """
+#     # Parse alternate_ids if they're stored as strings
+#     def parse_alternate_ids(alternate_ids):
+#         if isinstance(alternate_ids, str):
+#             try:
+#                 return ast.literal_eval(alternate_ids)
+#             except:
+#                 return []
+#         return alternate_ids if isinstance(alternate_ids, list) else []
+    
+#     df['alternate_ids_list'] = df['alternate_ids'].apply(parse_alternate_ids)
+    
+#     # Function to extract identifiers by source
+#     def extract_ids_by_source(alt_ids):
+#         id_dict = {}
+#         for id_str in alt_ids:
+#             if ':' in id_str:
+#                 source, id_val = id_str.split(':', 1)
+#                 if source not in id_dict:
+#                     id_dict[source] = []
+#                 id_dict[source].append(id_val)
+#         return id_dict
+    
+#     df['ids_by_source'] = df['alternate_ids_list'].apply(extract_ids_by_source)
+    
+#     # Function to process a single row
+#     def process_row(row_data):
+#         idx, row = row_data
+#         atc_codes = []
+#         ids_by_source = row['ids_by_source']
+        
+#         # # Try DrugBank first (most reliable for ATC codes)
+#         # if 'DRUGBANK' in ids_by_source:
+#         #     for db_id in ids_by_source['DRUGBANK']:
+#         #         try:
+#         #             response = requests.get(f"https://go.drugbank.com/drugs/{db_id}.json")
+#         #             if response.status_code == 200:
+#         #                 data = response.json()
+#         #                 if 'atc_codes' in data:
+#         #                     atc_codes.extend(data['atc_codes'])
+#         #             time.sleep(rate_limit_delay)  # Respect rate limits
+#         #         except Exception as e:
+#         #             print(f"Error querying DrugBank for {db_id}: {e}")
+        
+#         # Try PubChem
+#         if not atc_codes and 'PUBCHEM.COMPOUND' in ids_by_source:
+#             for pc_id in ids_by_source['PUBCHEM.COMPOUND']:
+#                 try:
+#                     response = requests.get(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pc_id}/classification/JSON")
+#                     if response.status_code == 200:
+#                         data = response.json()
+#                         if 'Hierarchy' in data:
+#                             for hierarchy in data['Hierarchy']:
+#                                 if 'ATC' in hierarchy.get('SourceName', ''):
+#                                     atc_codes.append(hierarchy.get('SourceID', ''))
+#                     time.sleep(rate_limit_delay)
+#                 except Exception as e:
+#                     print(f"Error querying PubChem for {pc_id}: {e}")
+        
+#         # Try DrugCentral
+#         if not atc_codes and 'DrugCentral' in ids_by_source:
+#             for dc_id in ids_by_source['DrugCentral']:
+#                 try:
+#                     response = requests.get(f"https://drugcentral.org/api/drug/{dc_id}")
+#                     if response.status_code == 200:
+#                         data = response.json()
+#                         if 'atc_code' in data:
+#                             atc_codes.extend(data['atc_code'])
+#                     time.sleep(rate_limit_delay)
+#                 except Exception as e:
+#                     print(f"Error querying DrugCentral for {dc_id}: {e}")
+        
+#         # Try ChEMBL
+#         if not atc_codes and 'CHEMBL.COMPOUND' in ids_by_source:
+#             for chembl_id in ids_by_source['CHEMBL.COMPOUND']:
+#                 try:
+#                     response = requests.get(f"https://www.ebi.ac.uk/chembl/api/data/molecule/{chembl_id}.json")
+#                     if response.status_code == 200:
+#                         data = response.json()
+#                         if 'atc_classifications' in data:
+#                             atc_codes.extend(data['atc_classifications'])
+#                     time.sleep(rate_limit_delay)
+#                 except Exception as e:
+#                     print(f"Error querying ChEMBL for {chembl_id}: {e}")
+                    
+#         # Try KEGG (using CAS as the identifier)
+#         if not atc_codes and 'CAS' in ids_by_source:
+#             for cas_id in ids_by_source['CAS']:
+#                 try:
+#                     response = requests.get(f"https://rest.kegg.jp/find/drug/{cas_id}")
+#                     if response.status_code == 200:
+#                         kegg_drugs = [line.split("\t")[0].replace("dr:", "") for line in response.text.strip().split("\n") if line]
+                        
+#                         for kegg_drug in kegg_drugs:
+#                             drug_response = requests.get(f"https://rest.kegg.jp/get/{kegg_drug}")
+#                             if drug_response.status_code == 200:
+#                                 atc_match = re.search(r'ATC code: ([A-Z]\d{2}[A-Z]{2}\d{2})', drug_response.text)
+#                                 if atc_match:
+#                                     atc_codes.append(atc_match.group(1))
+#                             time.sleep(rate_limit_delay)
+#                 except Exception as e:
+#                     print(f"Error querying KEGG for {cas_id}: {e}")
+        
+#         # Return the row index and the found ATC codes
+#         return idx, atc_codes
+    
+#     # Process rows in parallel
+#     results = {}
+#     with ThreadPoolExecutor(max_workers=num_workers) as executor:
+#         # Create a list of tasks
+#         future_to_idx = {executor.submit(process_row, (idx, row)): idx 
+#                          for idx, row in df.iterrows()}
+        
+#         # Process results as they complete (with optional progress bar)
+#         for future in tqdm(future_to_idx, total=len(df), desc="Processing compounds"):
+#             idx, atc_codes = future.result()
+#             results[idx] = atc_codes
+    
+#     # Update the DataFrame with results
+#     df['atc_codes'] = pd.Series(results)
+    
+#     # Function to break down ATC code into levels
+#     def break_down_atc(atc_code):
+#         if not atc_code:
+#             return None, None, None, None, None
+        
+#         # Level 1: Anatomical main group (first character)
+#         level1 = atc_code[0] if len(atc_code) >= 1 else None
+        
+#         # Level 2: Therapeutic subgroup (first 3 characters)
+#         level2 = atc_code[:3] if len(atc_code) >= 3 else None
+        
+#         # Level 3: Pharmacological subgroup (first 4 characters)
+#         level3 = atc_code[:4] if len(atc_code) >= 4 else None
+        
+#         # Level 4: Chemical subgroup (first 5 characters)
+#         level4 = atc_code[:5] if len(atc_code) >= 5 else None
+        
+#         # Level 5: Chemical substance (all 7 characters)
+#         level5 = atc_code if len(atc_code) == 7 else None
+        
+#         return level1, level2, level3, level4, level5
+    
+#     # Apply the top-level ATC code function
+#     def get_top_atc(atc_codes):
+#         return atc_codes[0] if isinstance(atc_codes, list) and atc_codes else None
+    
+#     df['atc_main'] = df['atc_codes'].apply(get_top_atc)
+    
+#     # Break down the main ATC code into levels
+#     df[['atc_level1', 'atc_level2', 'atc_level3', 'atc_level4', 'atc_level5']] = pd.DataFrame(
+#         df['atc_main'].apply(break_down_atc).tolist(), 
+#         index=df.index
+#     )
+    
+#     return df
 
 ########################################################################################
 ##################### END ATC CODES ####################################################
@@ -1725,6 +1780,21 @@ def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_des
     df.update(feature_df)
 
     return df
+
+
+def get_atc_normalized_ids(atc_standard: pd.DataFrame) -> pd.DataFrame:
+    atc_ids = []
+    for idx, row in tqdm(atc_standard.iterrows(), total=len(atc_standard), desc="obtaining IDs associated with top-level ATC codes"):
+        if row['CUI']:
+            cui = row['CUI']
+            norm_ids, norm_labels = normalize(f"UMLS:{cui}")
+            atc_ids.append(norm_ids[0])
+        else:
+            atc_ids.append(None)
+
+    atc_standard['normalized_id']=atc_ids
+    return atc_standard
+
 
 
 # def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_description: str):
@@ -1826,3 +1896,110 @@ def filter_drugs(in_df:pd.DataFrame) -> pd.DataFrame:
     in_df.drop(indices_to_remove, axis=0, inplace=True)
     in_df = in_df.rename(columns={'improved_id': 'curie', 'label': 'curie_label'})
     return in_df
+
+
+
+
+
+
+
+# ATC CODES
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import re
+
+@cache
+def atc_code_to_name(atc_code):
+    """
+    Convert an ATC code to its corresponding drug name/classification
+    
+    Parameters:
+    -----------
+    atc_code : str
+        The ATC code to convert
+    
+    Returns:
+    --------
+    str
+        The name corresponding to the ATC code, or an error message if not found
+    """
+    # Validate ATC code format (usually starts with a letter followed by digits)
+    try:
+        if not re.match(r'^[A-Z]\d{2}[A-Z]{2}\d{2}$', atc_code) and not re.match(r'^[A-Z]\d{2}[A-Z]{2}$', atc_code) and not re.match(r'^[A-Z]\d{2}$', atc_code) and not re.match(r'^[A-Z]$', atc_code):
+            return "Invalid ATC code format"
+    except:
+        return "Error"
+    try:
+        # Option 1: Use WHO ATC/DDD website
+        url = f"https://www.whocc.no/atc_ddd_index/?code={atc_code}"
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Extract the name based on the website structure
+        # This might need adjustment based on the exact HTML structure
+        result = soup.find('ul', class_='atc-index')
+        if result:
+            name = result.find('a').text.strip()
+            return name
+        
+        # Option 2: Use DrugBank or similar API if you have access
+        # This would require an API key and appropriate setup
+        
+        # Option 3: Use a local database/CSV file
+        # If you have a local ATC code mapping file
+        # df = pd.read_csv('atc_codes.csv')
+        # result = df[df['atc_code'] == atc_code]['name'].values
+        # if len(result) > 0:
+        #     return result[0]
+        
+        return f"No name found for ATC code: {atc_code}"
+    
+    except Exception as e:
+        return f"Error retrieving ATC code name: {str(e)}"
+
+
+def get_atc_dict(df: pd.DataFrame) -> dict:
+    out_dict = {}
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="building ATC dictionary"):
+        id = row['Class ID'].replace("http://purl.bioontology.org/ontology/ATC/", "").upper()
+        label = row['Preferred Label'].lower()
+        out_dict[id] = label
+    return out_dict
+
+
+def add_atc_category_labels(df:pd.DataFrame, atc_dict: pd.DataFrame)->pd.DataFrame:
+    out_dict = get_atc_dict(atc_dict)
+    [l1, l2, l3, l4, l5] = ([] for i in range(5))
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="retrieving ATC tags"):
+
+        if row['atc_level1'] in out_dict:
+            l1.append(out_dict[row['atc_level1']]) 
+        else:
+            l1.append(None)
+        if row['atc_level2'] in out_dict:
+            l2.append(out_dict[row['atc_level2']])
+        else: 
+            l2.append(None)
+
+        if row['atc_level3'] in out_dict:
+            l3.append(out_dict[row['atc_level3']])  
+        else:
+            l3.append(None)
+        if row['atc_level4'] in out_dict:
+            l4.append(out_dict[row['atc_level4']])  
+        else:
+            l4.append(None)
+        if row['atc_level5'] in out_dict:
+            l5.append(out_dict[row['atc_level5']])
+        else:
+            l5.append(None)
+
+    df['l1_label']=l1
+    df['l2_label']=l2
+    df['l3_label']=l3
+    df['l4_label']=l4
+    df['l5_label']=l5
+    return df

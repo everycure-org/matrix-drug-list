@@ -486,6 +486,10 @@ drug_list_atc:
   type: pandas.ExcelDataset
   filepath: data/03_primary/merged_drugList_with_atc.xlsx
 
+drug_list_atc_with_labels:
+  type: pandas.ExcelDataset
+  filepath: data/03_primary/merged_drugList_with_atc_and_labels.xlsx
+
 
 # Post-enrichment final list
 drug_list_with_radioisotope_tags:
@@ -592,5 +596,12 @@ drug_list_with_smiles:
   type: pandas.ExcelDataset
   filepath: data/03_primary/drug_list_with_smiles.xlsx
 
+# ATC
+atc_specification:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/ATC.csv
 
+atc_with_ids:
+  type: pandas.CSVDataset
+  filepath: data/04_feature/atc_with_ids.csv
 

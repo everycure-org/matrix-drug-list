@@ -1,8 +1,7 @@
 from kedro.pipeline import Pipeline, pipeline, node
 from . import nodes
 
-def create_pipeline(**kwargs) -> Pipeline:
-    
+def create_pipeline(**kwargs) -> Pipeline: 
     return pipeline(
         [
             # PURPLE BOOK BUILD
@@ -279,11 +278,6 @@ def create_pipeline(**kwargs) -> Pipeline:
             ##########################################################################################
             ##########################################################################################
 
-
-
-
-
-
             # ORANGE BOOK BUILD
             node(
                 func = nodes.add_most_permissive_marketing_tags_fda,
@@ -301,17 +295,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'orange_book_list_standardized',
                 name = 'standardize-orangebook'
             ),
-            # node(
-            #     func=nodes.drop_discontinued_drugs,
-            #     inputs=[
-            #         'orange_book_list_standardized',
-            #         "params:marketing_status_column_orangebook",
-            #         "params:discontinued_marker_orangebook",
-            #     ],
-            #     outputs='orange_book_list_no_discn',
-            #     name = 'drop-discontinued-drugs-orangebook'
-            # ),
-
             node(
                 func=nodes.tag_combination_therapies,
                 inputs=[
@@ -422,8 +405,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'orange_book_list_filtered',
                 name = 'return_final_list_orangebook'
             ),
-
-
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
@@ -539,13 +520,10 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs = 'india_list_filtered',
                 name = 'return_final_list_india'
             ),
-
- 
             ##########################################################################################
             ##########################################################################################
             ##########################################################################################
-
-
+            
             # RUSSIA
             node(
                 func = nodes.translate_dataframe_columns,
@@ -884,7 +862,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.filter_drugs,
                 inputs="drug_list_with_tags",
                 outputs="drug_list_with_tags_cleaned",
-                name="filter_drugs",
+                name="filter-drugs",
             ),
 
 
@@ -897,15 +875,32 @@ def create_pipeline(**kwargs) -> Pipeline:
             #     name = 'drug-list-enrichment-vaccine-antigen'
             # ),
         
+            node(
+                func = nodes.get_atc_normalized_ids,
+                inputs = "atc_specification",
+                outputs = "atc_with_ids",
+                name = "get-atc-ids"
+            ),
 
-            # node(
-            #     func=nodes.get_atc_codes_from_external_sources,
-            #     inputs=[
-            #         "drug_list_with_no_therapeutic_value_tags"
-            #     ],
-            #     outputs = "drug_list_atc",
-            #     name = "get-atc-codes"
-            # ),
+            node(
+                func=nodes.get_atc_codes_for_dataframe,
+                inputs=[
+                    "drug_list_with_tags_cleaned",
+                    'atc_with_ids',
+                ],
+                outputs = "drug_list_atc",
+                name = "get-atc-codes"
+            ),
+
+            node(
+                func=nodes.add_atc_category_labels,
+                inputs=[
+                    "drug_list_atc",
+                    "atc_with_ids"
+                ],
+                outputs = "drug_list_atc_with_labels",
+                name = "get-atc-labels"
+            ),
 
             
 
@@ -913,7 +908,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             node(
                 func=nodes.add_approval_false_tags,
                 inputs=[
-                    'drug_list_with_tags_cleaned',
+                    'drug_list_atc_with_labels',
                     'params:approval_tags',
                 ],
                 outputs='drug_list_final',
