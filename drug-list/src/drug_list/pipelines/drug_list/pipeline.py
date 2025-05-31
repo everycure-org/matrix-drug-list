@@ -823,36 +823,36 @@ def create_pipeline(**kwargs) -> Pipeline:
 
             # DRUG LIST CATEGORIZATION TAGS
 
-            node(
-                func=nodes.enrich_drug_list,
-                inputs=['drug_list_merged',
-                        'params:enrichment_tags_radioisotope',
-                        'params:llm_to_use'],
-                outputs = 'drug_list_with_radioisotope_tags',
-                name = 'drug-list-enrichment'
-            ),
+            # node(
+            #     func=nodes.enrich_drug_list,
+            #     inputs=['drug_list_merged',
+            #             'params:enrichment_tag_radioisotope',
+            #             'params:llm_to_use'],
+            #     outputs = 'drug_list_with_radioisotope_tags',
+            #     name = 'drug-list-enrichment'
+            # ),
 
 
-            node(
-                func=nodes.enrich_drug_list,
-                inputs=['drug_list_with_radioisotope_tags',
-                        'params:enrichment_tag_allergen',
-                        'params:llm_to_use'],
-                outputs = 'drug_list_with_allergen_tags',
-                name = 'drug-list-enrichment-allergen'
-            ),
-            node(
-                func=nodes.enrich_drug_list,
-                inputs=['drug_list_with_allergen_tags',
-                        'params:enrichment_tag_metallic_salt',
-                        'params:llm_to_use'],
-                outputs = 'drug_list_with_metallic_salt_tags',
-                name = 'drug-list-enrichment-metallic-salt'
-            ),
+            # node(
+            #     func=nodes.enrich_drug_list,
+            #     inputs=['drug_list_with_radioisotope_tags',
+            #             'params:enrichment_tags_ec.allergen',
+            #             'params:llm_to_use'],
+            #     outputs = 'drug_list_with_allergen_tags',
+            #     name = 'drug-list-enrichment-allergen'
+            # ),
+            # node(
+            #     func=nodes.enrich_drug_list,
+            #     inputs=['drug_list_with_allergen_tags',
+            #             'params:enrichment_tags_ec.metallic_salt',
+            #             'params:llm_to_use'],
+            #     outputs = 'drug_list_with_metallic_salt_tags',
+            #     name = 'drug-list-enrichment-metallic-salt'
+            # ),
             node(
                 func=nodes.add_tags,
                 inputs=[
-                    "drug_list_with_metallic_salt_tags",
+                    "drug_list_merged",
                     "params:enrichment_tags_ec",
                 ],
                 outputs="drug_list_with_tags",
@@ -909,9 +909,9 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=nodes.add_approval_false_tags,
                 inputs=[
                     'drug_list_atc_with_labels',
-                    'params:approval_tags',
+                    'params:approval_tag_names',
                 ],
-                outputs='drug_list_final',
+                outputs='drug_list_final_no_smiles',
                 name = 'correct-approval-tags'
             ),
             
@@ -919,12 +919,11 @@ def create_pipeline(**kwargs) -> Pipeline:
             node(
                 func=nodes.add_SMILES_strings,
                 inputs=[
-                    "drug_list_final",
+                    "drug_list_final_no_smiles",
                 ],
-                outputs="drug_list_with_smiles",
+                outputs="drug_list_final",
                 name = "add-smiles-to-list"
-            )
-
+            ),
         ]
     )
 

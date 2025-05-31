@@ -414,14 +414,14 @@ biolink_type_drug: ChemicalOrDrugOrTreatment
 
 # DRUG CATEGORY TAGS
 
-enrichment_tag_radioisotope:
-  diagnostic_or_radioisotope:
-      input_col: label
-      output_col: is_radioisotope_or_diagnostic_agent
-      model_params:
-        model: gpt-4o-mini
-        prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
-        temperature: 0.2
+# enrichment_tag_radioisotope:
+#   diagnostic_or_radioisotope:
+#       input_col: label
+#       output_col: is_radioisotope_or_diagnostic_agent
+#       model_params:
+#         model: gpt-4o-mini
+#         prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
+#         temperature: 0.2
 
 
 # enrichment_tag_allergen:
@@ -509,6 +509,13 @@ enrichment_tags_ec:
       model: gpt-4o
       prompt: Is this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
       temperature: 0.2
+  diagnostic_or_radioisotope:
+    input_col: label
+    output_col: is_radioisotope_or_diagnostic_agent
+    model_params:
+      model: gpt-4o-mini
+      prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
+      temperature: 0.2
 
 
 
@@ -530,13 +537,19 @@ llm_to_use: openai
 
 
 # APPROVAL TAGS
-approval_tags:
+approval_tag_names:
   - "approved_usa"
   - "approved_eu"
   - "approved_japan"
   - "approved_india"
   - "approved_russia"
 
+approval_tags:
+  approval_tag_usa: "approved_usa"
+  approval_tag_europe: "approved_eu"
+  approval_tag_japan: "approved_japan"
+  approval_tag_india: "approved_india"
+  approval_tag_russia: "approved_russia"
 
 # LIST PROPERTIES
 drug_list_properties:
