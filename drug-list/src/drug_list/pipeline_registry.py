@@ -16,4 +16,5 @@ def register_pipelines() -> Dict[str, Pipeline]:
     """
     pipelines = {}
     pipelines["__default__"] = create_drug_list_pipeline()
+    
     return pipelines

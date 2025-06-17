@@ -1,9 +1,4 @@
 # ORANGE BOOK
-# orange-book-products:
-#   type: pandas.CSVDataset
-#   filepath: data/01_raw/products.txt
-#   load_args:
-#     sep: '~'
 
 fda_exclusions:
   type: pandas.ExcelDataset
@@ -12,10 +7,6 @@ fda_exclusions:
 fda_ob_split_exclusions:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/fda_ob_split_exclusions.xlsx
-
-# orange_book_list:
-#   type: pandas.ExcelDataset
-#   filepath: data/02_intermediate/fda_ob_list.xlsx
 
 # EMA
 ema_raw_data_set:
@@ -617,9 +608,102 @@ atc_with_ids:
 
 
 ## REPORTING
-robokop_treats_edges:
+
+previous_drug_list:
   type: pandas.CSVDataset
-  filepath: data/08_reporting/2025_05_19_robokop_treats_all.csv
+  filepath: data/08_reporting/drugList_2_2_0.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+
+drug_list_v2v_log:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/drug_list_v2v_log.xlsx
+
+orange_book_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/orange_book_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+purple_book_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/purple_book_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+ema_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/ema_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+pmda_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/pmda_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+india_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/india_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+russia_prev:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/russia_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
 
 
-
+orange_book_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/orange_book_comparison.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+purple_book_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/purple_book_comparison.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+ema_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/ema_comparison.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+pmda_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/pmda_prev.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+india_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/india_comparison.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+russia_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/russia_comparison.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"

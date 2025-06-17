@@ -1,5 +1,5 @@
 from kedro.pipeline import Pipeline, pipeline, node
-from . import nodes
+from . import nodes, compare_to_prev
 
 def create_pipeline(**kwargs) -> Pipeline: 
     return pipeline(
@@ -924,6 +924,109 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs="drug_list_final",
                 name = "add-smiles-to-list"
             ),
+
+            # PREVIOUS VERSIONS OF LISTS
+            node(
+                func=compare_to_prev.store_previous_version, 
+                inputs="purple_book_list_filtered",
+                outputs="purple_book_prev",
+                name="store-fda-pb"
+            ),
+            node(
+                func=compare_to_prev.store_previous_version,
+                inputs="orange_book_list_filtered",
+                outputs="orange_book_prev",
+                name = "store-fda-ob"
+            ),
+            node(
+                func=compare_to_prev.store_previous_version,
+                inputs="ema_list_filtered",
+                outputs="ema_prev",
+                name = "store-ema"
+            ),
+            node(
+                func=compare_to_prev.store_previous_version,
+                inputs="pmda_list_filtered",
+                outputs="pmda_prev",
+                name = "store-pmda"
+            ),
+            node(
+                func=compare_to_prev.store_previous_version,
+                inputs="india_list_filtered",
+                outputs="india_prev",
+                name = "store-india"
+            ),
+            node(
+                func=compare_to_prev.store_previous_version,
+                inputs="russia_list_filtered",
+                outputs="russia_prev",
+                name = "store-russia"
+            ),
+
+            # COMPARISON WITH PREVIOUS VERSIONS
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "purple_book_prev",
+                    "purple_book_list_filtered"
+                ],
+                outputs = "purple_book_comparison",
+                name = "compare_purple_book"
+            ),
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "orange_book_prev",
+                    "orange_book_list_filtered"
+                ],
+                outputs = "orange_book_comparison",
+                name = "compare_orange_book"
+            ),            
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "ema_prev",
+                    "ema_list_filtered"
+                ],
+                outputs = "ema_comparison",
+                name = "compare_ema"
+            ),
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "pmda_prev",
+                    "pmda_list_filtered"
+                ],
+                outputs = "pmda_comparison",
+                name = "compare_pmda"
+            ),
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "india_prev",
+                    "india_list_filtered"
+                ],
+                outputs = "india_comparison",
+                name = "compare_india"
+            ),
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "russia_prev",
+                    "russia_list_filtered"
+                ],
+                outputs = "russia_comparison",
+                name = "compare_russia"
+            ),
+            node(
+                func=compare_to_prev.compare,
+                inputs=[
+                    "previous_drug_list",
+                    "drug_list_final",
+                ],
+                outputs="drug_list_v2v_log",
+                name = "compare-drug-list-versions"
+            )
         ]
     )
 

@@ -546,7 +546,7 @@ approval_tag_names:
 
 approval_tags:
   approval_tag_usa: "approved_usa"
-  approval_tag_europe: "approved_eu"
+  approval_tag_europe: "acomparpproved_eu"
   approval_tag_japan: "approved_japan"
   approval_tag_india: "approved_india"
   approval_tag_russia: "approved_russia"

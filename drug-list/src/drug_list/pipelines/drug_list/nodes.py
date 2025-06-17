@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from requests.exceptions import HTTPError
 
 
+
 testing = False
 limit = 1000 # limit for testing full pipeline with limited number of names per list
 
@@ -1413,72 +1414,6 @@ def get_atc_normalized_ids(atc_standard: pd.DataFrame) -> pd.DataFrame:
     atc_standard['normalized_id']=atc_ids
     return atc_standard
 
-
-
-# def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_description: str):
-    
-#     """
-#     Generate new features for a pandas DataFrame using GPT-4o-mini without batching.
-    
-#     Parameters:
-#     -----------
-#     df : pandas.DataFrame
-#         The dataframe containing the text to analyze
-#     text_column : str
-#         The name of the column containing text to analyze
-#     new_feature_names : list
-#         List of names for the new feature columns to be created
-#     feature_descriptions : list
-#         List of descriptions for what each feature should represent
-    
-#     Returns:
-#     --------
-#     pandas.DataFrame
-#         The original dataframe with new feature columns added
-#     """
-    
-#     # Create a copy of the input DataFrame to avoid the SettingWithCopyWarning
-#     df = input_df.copy()
-   
-#     # Load the API key from .env file
-#     api_key = os.getenv("OPENAI_API_KEY")
-
-#     if not api_key:
-#         raise ValueError("OPENAI_API_KEY environment variable not set")
-    
-#     # Initialize the OpenAI client
-#     #'max_retries':8
-#     model = ChatOpenAI(name="gpt-4o-mini", model_kwargs={"response_format": {"type": "json_object"}})
-
-#     # Create empty columns for the new features
-#     df[new_feature_name] = None 
-
-#     # Create a system prompt for the for the new features
-#     prompt = ChatPromptTemplate.from_messages([
-#         (
-#             "system", 
-#             f"""You are a medical doctor trying to categorize a list of drugs. 
-#             For each drug name, extract the following features: 
-#             "{new_feature_name}: {feature_description}".
-#             Return ONLY a JSON object with the feature names as keys and the extracted values. 
-#             No explanations or other text."""
-#         ),
-#         (
-#             "user", 
-#             "Drug to analyze: {drug_name}"
-#         )
-#     ])
-
-
-#     chain = prompt | model
-#     #"max_concurrency":50
-#     response = chain.batch(list(df['label']), config={"max_concurrency":50})
-
-#     feature_df = pd.DataFrame([json.loads(r.content) for r in response])
-#     df.update(feature_df)
-
-#     return df
-
 def extract_outputs_and_prompts(data_dict):
     output_cols = []
     prompts = []
@@ -1632,7 +1567,6 @@ def add_SMILES_strings(drug_list: pd.DataFrame) -> pd.DataFrame:
         #print((alt_ids))
         if "PUBCHEM" in identifier:
             pc_id = int(extract_pubchem_id(identifier))
-            #print(pc_id)
             smiles.append(get_smiles_from_pubchem(pc_id))
         else:
             found_id = False
