@@ -4,8 +4,11 @@ from . import nodes
 
 def compare(previous_list: pd.DataFrame, current_list: pd.DataFrame) -> pd.DataFrame:
     
-    drugs_old = set(previous_list['improved_id'])
-    drugs_new = set(current_list['improved_id'])
+    #drugs_old = set(previous_list['improved_id'])
+    #drugs_new = set(current_list['improved_id'])
+
+    drugs_old = set(previous_list['curie'])
+    drugs_new = set(current_list['curie'])
 
     drugs_removed = drugs_old.difference(drugs_new)
     drugs_added = drugs_new.difference(drugs_old)
@@ -18,9 +21,9 @@ def compare(previous_list: pd.DataFrame, current_list: pd.DataFrame) -> pd.DataF
     #print(previous_list)
     #print(current_list)
 
-    drugs_added_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_added))
-    drugs_removed_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_removed))
-    drugs_same_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_same))
+    drugs_added_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_added, desc="normalizing added drugs"))
+    drugs_removed_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_removed, desc="normalizing removed drugs"))
+    drugs_same_labels = (nodes.normalize(item)[1] for item in tqdm(drugs_same, desc="normalizing unchanged drugs"))
 
     return pd.DataFrame({
         "drugs_added": pd.Series(list(drugs_added)),

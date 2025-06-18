@@ -539,22 +539,6 @@ drug_list_with_tags_cleaned:
   save_args:
     sep: "\t"
 
-test:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/batch_enrichment_test.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
-
-test_2:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/batch_enrichment_test_2.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
-
 drug_list_with_vaccine_antigen_tags:
   type: pandas.CSVDataset
   filepath: data/02_intermediate/drug-list-vaccine-antigen.tsv
@@ -611,7 +595,7 @@ atc_with_ids:
 
 previous_drug_list:
   type: pandas.CSVDataset
-  filepath: data/08_reporting/drugList_2_2_0.tsv
+  filepath: data/08_reporting/drugList_v2_0_0.tsv
   save_args:
     sep: "\t"
   load_args:
