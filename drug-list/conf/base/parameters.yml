@@ -211,10 +211,12 @@ split_exclusions_pmda:
   - PNEUMOCOCCAL POLYSACCHARIDES OF SEROTYPES 1; 3; 4; 5; 6A; 6B; 7F; 9V; 14; 18C; 19A; 19F; 22F; 23F;; 33F CONJUGATED TO CRM197 CARRIER PROTEIN
   - CANDESARTAN CILEXETIL; HYDROCHLOROTHIAZIDE
   
-pmda_drug_name_column: "Active Ingredient (underlined: new active ingredient)"
+pmda_drug_name_column: "Active Ingredient"
 pmda_approval_date_column: Approval Date
-delimiters_pmda: 
-  - ";"
+delimiters_pmda:
+  - "|"
+  #- ";"
+  - "|"
   # - ", "
   # - " and "
   # - " / "
@@ -382,22 +384,10 @@ delimiters_russia:
 name_resolver_params:
   url: https://name-resolution-sri.renci.org/
   service: lookup
-  autocomplete_setting: false
+  autocomplete_setting: true
   id_limit: 10
   offset: 0
   biolink_type: ChemicalOrDrugOrTreatment
-
-
-name_resolver_params_local:
-  url: https://localhost:2433/
-  service: lookup
-  autocomplete_setting: false
-  id_limit: 10
-  offset: 0
-  biolink_type: ChemicalOrDrugOrTreatment
-
-name_reformatting_prompt: Reformat this drug name to include only active moieties separated by semicolons - return only the reformatted list with no additional text or explanations.
-
 
 column_names:
   drug_name: drug_name
@@ -413,45 +403,19 @@ biolink_type_drug: ChemicalOrDrugOrTreatment
 
 
 # DRUG CATEGORY TAGS
+pmda_tag_colname: "Active Ingredient (underlined: new active ingredient)"
+pmda_restructured_ingredients_tag: "Active Ingredient"
 
-# enrichment_tag_radioisotope:
-#   diagnostic_or_radioisotope:
-#       input_col: label
-#       output_col: is_radioisotope_or_diagnostic_agent
-#       model_params:
-#         model: gpt-4o-mini
-#         prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
-#         temperature: 0.2
+preprocessing_tag_pmda:
+  tag:
+    input_col: "Active Ingredient (underlined: new active ingredient)"
+    output_col: "Active Ingredient"
+    model_params:
+      model: gpt-4o
+      prompt: Please take the following drug description and return a structured list in all caps with vertical pipes | separating the ingredients. If a single drug, just return the drug name in all caps. If no drugs, return NONE. Consider antigens etc to be drugs. If a name looks like it *should* be a drug but you do not recognize it as a drug, include it anyway. If you see biologics with multiple types, e.g. \'Pneumococcal polysaccharides of serotypes 1, 3, 4, 5, 6A, 6B, 7F, 9V, 14...\', just return it as a single item. Remove all other vertical pipes so the items can be trivially separated into a list using a Python string split function.
+      temperature: 0.2
 
-
-# enrichment_tag_allergen:
-#   allergen:
-#     input_col: label
-#     output_col: is_allergen
-#     model_params:
-#       model: gpt-4o
-#       prompt: Is this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
-#       temperature: 0.2
-
-# enrichment_tag_metallic_salt:
-#   metallic_salt:
-#     input_col: label
-#     output_col: is_metallic_salt
-#     model_params:
-#       model: gpt-4o
-#       prompt: Is this drug a simple metallic salt? Return TRUE or FALSE only.
-#       temperature: 0.2
-
-# enrichment_tag_no_therapeutic_value:
-#   no_therapeutic_value:
-#     input_col: label
-#     output_col: is_no_therapeutic_value
-#     model_params:
-#       model: gpt-4o
-#       prompt: Could this drug be classified as having little therapeutic value? For example, sterile water, tryptan blue, copper, soybean oil, evans blue, and cocaine are considered low therapeutic value. Return TRUE or FALSE only.
-#       temperature: 0.2
-
-
+ec_tag_colname: label
 enrichment_tags_ec:
   steroid:
     input_col: label
@@ -507,18 +471,24 @@ enrichment_tags_ec:
     output_col: is_allergen
     model_params:
       model: gpt-4o
-      prompt: Is this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
+      prompt: Would this drug primarily used as an allergen for allergy testing? Return TRUE or FALSE only.
       temperature: 0.2
   diagnostic_or_radioisotope:
     input_col: label
     output_col: is_radioisotope_or_diagnostic_agent
     model_params:
-      model: gpt-4o-mini
+      model: gpt-4o
       prompt: Is this drug primarily used as a radiolabel or diagnostic agent? Return TRUE or FALSE only.
       temperature: 0.2
 
-
-
+enrichment_tag_cancer_drug:
+  cancer_drug:
+    input_col: label
+    output_col: is_cancer_drug
+    model_params:
+      model: gpt-4o
+      prompt: Is this drug used as a primary treatment for cancer or in conjunction with cancer therapy? Return TRUE or FALSE only.
+      temperature: 0.2
 
 id_correct_incorrect_tag_drug:
   model_params:
@@ -541,15 +511,27 @@ approval_tag_names:
   - "approved_usa"
   - "approved_eu"
   - "approved_japan"
-  - "approved_india"
-  - "approved_russia"
+  #- "approved_india"
+  #- "approved_russia"
+
+# stringent drug lists
+stringent_approvals:
+  - "pmda_list_filtered"
+  - "ema_list_filtered"
+  - "orange_book_list_filtered"
+  - "purple_book_list_filetered"
 
 approval_tags:
   approval_tag_usa: "approved_usa"
-  approval_tag_europe: "acomparpproved_eu"
+  approval_tag_europe: "approved_eu"
   approval_tag_japan: "approved_japan"
-  approval_tag_india: "approved_india"
-  approval_tag_russia: "approved_russia"
+  #approval_tag_india: "approved_india"
+  #approval_tag_russia: "approved_russia"
+
+approval_tags_stringent:
+  - "approved_usa"
+  - "approved_eu"
+  - "approved_japan"
 
 # LIST PROPERTIES
 drug_list_properties:
@@ -560,6 +542,8 @@ drug_list_properties:
   - combination_therapy
   - alternate_ids
   - label
+
+
 
 additional_drug_list_properties_usa:
   - marketing_status_usa
