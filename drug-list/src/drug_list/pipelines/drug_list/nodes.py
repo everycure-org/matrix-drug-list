@@ -23,7 +23,7 @@ from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor
 from requests.exceptions import HTTPError
 
-
+from matplotlib_venn import venn2
 
 testing = False
 limit = 1000 # limit for testing full pipeline with limited number of names per list
@@ -80,9 +80,10 @@ def preprocess_pmda(rawdata:pd.DataFrame) -> pd.DataFrame:
 
             item = item.replace("\n", " ")
 
-            if type(item)!=float and (("," in item) or ("/" in item) or (" AND " in item)) and item not in exclusions:
+            if type(item)!=float and (("," in item) or ("/" in item) or (" AND " in item)):
                 item= item.replace(",","; ").replace(" AND ", "; ").replace("/","; ").replace(";;",";").replace(";  ", "; ").replace("  ;", ";").replace(" ;",";").strip()
             new_names.append(item)
+
         except:
             print("encountered problem with ", item)
             new_names.append("error")
@@ -739,7 +740,7 @@ def reformat_ingredients_with_ollama(in_list: pd.DataFrame, prompt_string) -> pd
     in_list['drug_name'] = new_drug_names
     return in_list
 
-def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.DataFrame, purplebook: pd.DataFrame, russia: pd.DataFrame, india: pd.DataFrame) -> pd.DataFrame:
+def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.DataFrame, purplebook: pd.DataFrame)-> pd.DataFrame:#, #russia: pd.DataFrame, india: pd.DataFrame) -> pd.DataFrame:
     """
     Merge multiple dataframes based on the 'curie' field, combining matching rows.
     
@@ -749,7 +750,7 @@ def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.D
     Returns:
     pandas.DataFrame: Merged dataframe with combined rows
     """
-    df_list = list([pmda, ema, orangebook, purplebook, russia, india])
+    df_list = list([pmda, ema, orangebook, purplebook])#, #russia, india])
     if not df_list:
         raise ValueError("Empty list of dataframes provided")
         
@@ -771,6 +772,12 @@ def merge_all_drug_lists(pmda: pd.DataFrame, ema: pd.DataFrame, orangebook: pd.D
     merged_df = combined_df.groupby('improved_id', as_index=False).agg(combine_rows)
     return merged_df
 
+
+def include_stringent_only(df:pd.DataFrame, tags: list[str]) -> pd.DataFrame:
+    mask = df[tags].any(axis=1)
+    new_df = df[mask]
+    df_final = new_df.drop(['approved_india', 'approved_russia'], axis=1)
+    return df_final
 
 def enrich_drug_list(drug_list:List, params:Dict, llm_to_use)-> pd.DataFrame:
     """Node enriching existing drug list with llm-generated tags.
@@ -816,7 +823,7 @@ def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
     # PubChem REST API endpoint
     base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
     endpoint = f"{base_url}/compound/cid/{pubchem_id}/property/IsomericSMILES/JSON"
-
+    print(endpoint)
     try:
         # Make the API request
         response = requests.get(endpoint)
@@ -826,7 +833,7 @@ def get_smiles_from_pubchem(pubchem_id: int) -> Optional[str]:
         data = response.json()
         
         # Extract the SMILES string
-        smiles = data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
+        smiles = data["PropertyTable"]["Properties"][0]["SMILES"]
         return smiles
         
     except requests.RequestException as e:
@@ -1335,15 +1342,13 @@ def remap_columns(df_in:pd.DataFrame, colname_in, colname_out) -> pd.DataFrame:
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 
-def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_description: str):
+def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_description: str, label_colname: str, model: str):
     """
-    Generate new features for a pandas DataFrame using GPT-4o-mini without batching.
+    Generate new features for a pandas DataFrame using specified model
     
     Parameters:
     -----------
@@ -1372,7 +1377,7 @@ def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_des
         raise ValueError("OPENAI_API_KEY environment variable not set")
     
     # Initialize the OpenAI client
-    model = ChatOpenAI(name="gpt-4o-mini", max_retries=3, model_kwargs={"response_format": {"type": "json_object"}})
+    model = ChatOpenAI(name=model, max_retries=3, model_kwargs={"response_format": {"type": "json_object"}})
 
     # Create empty columns for the new features
     df[new_feature_name] = None 
@@ -1393,7 +1398,11 @@ def generate_features(input_df: pd.DataFrame, new_feature_name: str, feature_des
         )
     ])
     chain = prompt | model
-    response = chain.batch(list(df['label']), config={"max_concurrency": 50})
+    response = chain.batch(list(df[label_colname]), config={"max_concurrency": 50})
+    
+    for i, r in enumerate(response):
+        if not r:
+            response[i] = False
 
     feature_df = pd.DataFrame([json.loads(r.content) for r in response])
     df.update(feature_df)
@@ -1417,21 +1426,24 @@ def get_atc_normalized_ids(atc_standard: pd.DataFrame) -> pd.DataFrame:
 def extract_outputs_and_prompts(data_dict):
     output_cols = []
     prompts = []
+    model = []
+    temp = []
     
     # Extract output_col and prompt for each tag
     for tag_name, tag_info in data_dict.items():
         output_cols.append(tag_info['output_col'])
         prompts.append(tag_info['model_params']['prompt'])
-    
-    return output_cols, prompts
+        model.append(tag_info['model_params']['model'])
+        temp.append(tag_info['model_params']['temperature'])
+    return output_cols, prompts, model, temp
 
 
-def add_tags(in_df: pd.DataFrame, tags:dict ) -> pd.DataFrame:
+def add_tags(in_df: pd.DataFrame, tags: dict, label_col: str) -> pd.DataFrame:
     df = in_df.copy()
-    feature_names, feature_descriptions = extract_outputs_and_prompts(tags)
-    for feature_name, feature_description in tqdm(zip(feature_names, feature_descriptions)):
+    feature_names, feature_descriptions, model, temp= extract_outputs_and_prompts(tags)
+    for feature_name, feature_description, model, temp in tqdm(zip(feature_names, feature_descriptions, model, temp)):
         if feature_name not in df.columns:
-            df = generate_features(df, feature_name, feature_description)
+            df = generate_features(df, feature_name, feature_description, label_col, model)
             print(f"{feature_name} generated")
         else:
             print(f"{feature_name} already exists")
@@ -1441,10 +1453,13 @@ def add_tags(in_df: pd.DataFrame, tags:dict ) -> pd.DataFrame:
     return df
 
 
+
+
 def filter_drugs(in_df:pd.DataFrame) -> pd.DataFrame:
     indices_to_remove = []
-    for idx, row in tqdm(in_df.iterrows(), total=len(in_df), desc="clearing allergens, radioisotopes, and drugs of low therapeutic value"):
-        if row['is_allergen']==True or row['is_radioisotope_or_diagnostic_agent']==True or row['is_no_therapeutic_value']==True:
+    for idx, row in tqdm(in_df.iterrows(), total=len(in_df), desc="clearing allergens, vaccines, radioisotopes, and drugs of low therapeutic value"):
+        #print(f"row['isallergen']: {row['is_allergen']}, {type(row['is_allergen'])}")
+        if row['is_allergen']==True or row['is_allergen']=='TRUE' or row['is_radioisotope_or_diagnostic_agent']==True or row['is_no_therapeutic_value']==True or row['is_vaccine_or_antigen']==True:
             indices_to_remove.append(idx)
     in_df.drop(indices_to_remove, axis=0, inplace=True)
     in_df = in_df.rename(columns={'improved_id': 'curie', 'label': 'curie_label'})
@@ -1580,3 +1595,81 @@ def add_SMILES_strings(drug_list: pd.DataFrame) -> pd.DataFrame:
                 smiles.append("")
     drug_list['smiles']=smiles
     return drug_list
+
+import matplotlib.pyplot as plt
+
+def compare_robokop_medi(drugs_rk:pd.DataFrame, drugs_medi:pd.DataFrame)->pd.DataFrame:
+    rk_drugs = set(list(drugs_rk['curie']))
+    medi_drugs = set(list(drugs_medi['curie']))
+    out = venn2([rk_drugs, medi_drugs],("ROBOKOP KG", "MeDI"))
+    
+    for text in out.set_labels:
+        text.set_fontsize(22)
+    for text in out.subset_labels:
+        text.set_fontsize(22)
+    plt.show()
+    return drugs_rk
+
+
+def add_norm_drugcentral_ids(drugcentral_drugs:pd.DataFrame) -> pd.DataFrame:
+    norm_id_list = []
+    norm_label_list = []
+    for idx, row in tqdm(drugcentral_drugs.iterrows(), total=len(drugcentral_drugs), desc="normalizing"):
+        id = ":".join(["DRUGCENTRAL", str(row['drugcentral_id'])])
+        norm_ids, norm_label = normalize(id)
+        norm_id_list.append(norm_ids[0])
+        norm_label_list.append(norm_label)
+
+    drugcentral_drugs['norm_id']=norm_id_list
+    drugcentral_drugs['norm_label']=norm_label_list
+
+    return drugcentral_drugs
+
+def compare_drugcentral_medi(drugs_drugcentral:pd.DataFrame, drugs_medi:pd.DataFrame)->pd.DataFrame:
+    drugcentral_drugs = set(list(drugs_drugcentral['norm_id']))
+    medi_drugs = set(list(drugs_medi['curie']))
+    out = venn2([drugcentral_drugs, medi_drugs],("Drug Central", "MeDI")) 
+    for text in out.set_labels:
+        text.set_fontsize(22)
+    for text in out.subset_labels:
+        text.set_fontsize(22)
+    plt.show()
+    return drugs_drugcentral
+
+
+def compare_indications_drugs(drugs: pd.DataFrame, indications: pd.DataFrame) -> pd.DataFrame:
+    column_name_ind = 'final normalized drug id'
+    column_name_ind_label = 'final normalized drug label'
+    drug_ids = set(list(drugs['improved_id']))
+    indication_drugs_ids = set(list(indications[column_name_ind]))
+    print(f"{len(indication_drugs_ids.difference(drug_ids))} missing")
+    indication_drugs_mappings = dict([(row[column_name_ind], row[column_name_ind_label]) for idx, row in indications.iterrows() ])
+    missing_drugs_ids = list(indication_drugs_ids.difference(drug_ids))
+    missing_drug_labels = list(indication_drugs_mappings[item] for item in missing_drugs_ids)
+    return pd.DataFrame({
+        "curie":missing_drugs_ids,
+        "label":missing_drug_labels,
+    })
+
+
+
+def renormalize(df: pd.DataFrame) -> pd.DataFrame:
+    new_ids = []
+    new_labels = []
+    new_alt_ids = []
+    for idx, row in tqdm(df.iterrows(), total = len(df), desc="renormalizing list"):
+        ids, label = normalize(row['curie'])
+        new_ids.append(ids[0])
+        new_labels.append(label)
+        new_alt_ids.append(ids)
+    df['curie']=new_ids
+    df['curie_label']=new_labels
+    df['alternate_ids']=new_alt_ids
+
+    return df
+
+
+
+def rejoin(df: pd.DataFrame) -> pd.DataFrame:
+    df_deduplicated = df.drop_duplicates(subset=['curie'])
+    return df_deduplicated

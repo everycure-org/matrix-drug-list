@@ -1,5 +1,14 @@
-# ORANGE BOOK
+# ERRORS
 
+error_log:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/errors.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+
+# ORANGE BOOK
 fda_exclusions:
   type: pandas.ExcelDataset
   filepath: data/02_intermediate/fda_exclusions.xlsx
@@ -180,8 +189,6 @@ orange_book_list_filtered:
 ##########################################################################################
 ##########################################################################################
 ##########################################################################################
-
-
 
 # EMA
 ema-products:
@@ -483,37 +490,37 @@ drug_list_atc_with_labels:
 
 
 # Post-enrichment final list
-drug_list_with_radioisotope_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-radioisotope-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_radioisotope_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-radioisotope-tags.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
-drug_list_with_allergen_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-allergen-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_allergen_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-allergen-tags.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
-drug_list_with_metallic_salt_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-metallic-salt-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_metallic_salt_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-metallic-salt-tags.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
-drug_list_with_no_therapeutic_value_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-no-therapeutic-value-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_no_therapeutic_value_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-no-therapeutic-value-tags.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
 # drug_list_with_no_therapeutic_value_tags_test:
 #   type: pandas.CSVDataset
@@ -524,36 +531,32 @@ drug_list_with_no_therapeutic_value_tags:
 #     sep: "\t"
 
 drug_list_with_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug-list-with-tags.xlsx
+
+drug_list_with_cancer_tags:
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug-list-with-cancer-tags.xlsx
 
 drug_list_with_tags_cleaned:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-tags-cleaned.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+  type: pandas.ExcelDataset
+  filepath: data/02_intermediate/drug-list-with-tags-cleaned.xlsx
 
-drug_list_with_vaccine_antigen_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-vaccine-antigen.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_vaccine_antigen_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-vaccine-antigen.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
-drug_list_with_ec_tags:
-  type: pandas.CSVDataset
-  filepath: data/02_intermediate/drug-list-with-ec-tags.tsv
-  load_args:
-    sep: "\t"
-  save_args:
-    sep: "\t"
+# drug_list_with_ec_tags:
+#   type: pandas.CSVDataset
+#   filepath: data/02_intermediate/drug-list-with-ec-tags.tsv
+#   load_args:
+#     sep: "\t"
+#   save_args:
+#     sep: "\t"
 
 drug_list_corrected_approval_tags:
   type: pandas.ExcelDataset
@@ -567,9 +570,33 @@ drug_list_final:
   load_args:
     sep: "\t"
 
+drug_list_renorm:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/drugList_renorm.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+
+drug_list_renorm_rejoined:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/drugList_renorm_rejoin.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+
 drug_list_final_no_smiles:
   type: pandas.CSVDataset
   filepath: data/03_primary/drugList_no_smiles.tsv
+  save_args:
+    sep: "\t"
+  load_args:
+    sep: "\t"
+
+drug_list_stringent:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/drug_list_stringent.tsv
   save_args:
     sep: "\t"
   load_args:
@@ -595,11 +622,17 @@ atc_with_ids:
 
 previous_drug_list:
   type: pandas.CSVDataset
-  filepath: data/08_reporting/drugList_v2_0_0.tsv
+  filepath: data/08_reporting/drugList_v2_3_0.tsv
   save_args:
     sep: "\t"
   load_args:
     sep: "\t"
+
+
+drug_list_renorm_v2v:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/drug_list_renorm_v2v.xlsx
+
 
 drug_list_v2v_log:
   type: pandas.ExcelDataset
@@ -691,3 +724,36 @@ russia_comparison:
     sep: "\t"
   load_args:
     sep: "\t"
+
+
+# ROBOKOP AND RTX COMPARISON
+robokop_drugs:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/robokop_drugs.csv
+
+drugcentral_approved_drugs:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/all_approved_drugs_drugcentral.xlsx
+
+drugcentral_norm:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/drugcentral_approved_norm.xlsx
+
+
+
+# REPORTING
+
+# indications_list:
+#   type: pandas.ExcelDataset
+#   filepath: https://github.com/everycure-org/matrix-indication-list/releases/download/v1.2.0/indicationList.xlsx
+#   load_args:
+#     engine: openpyxl
+#     sheet_name: 0
+
+indications_list:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/matrix_indication_list.xlsx
+
+missing_drugs_indications:
+  type: pandas.ExcelDataset
+  filepath: data/08_reporting/indications_missing_drugs.xlsx

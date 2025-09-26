@@ -1,1 +1,1 @@
-{"previous_drug_list": {"rows": 3136, "columns": 16, "file_size": 3419592}, "drug_list_final": {"rows": 3255, "columns": 36, "file_size": 5138523}, "drug_list_v2v_log": {"rows": 2636, "columns": 6, "file_size": 121010}}
+{"drug_list_renorm": {"rows": 3923, "columns": 36, "file_size": 5486888}, "drug_list_renorm_rejoined": {"rows": 3857, "columns": 36, "file_size": 5264136}}

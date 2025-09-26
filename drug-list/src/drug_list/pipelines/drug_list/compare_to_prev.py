@@ -3,9 +3,6 @@ from tqdm import tqdm
 from . import nodes
 
 def compare(previous_list: pd.DataFrame, current_list: pd.DataFrame) -> pd.DataFrame:
-    
-    #drugs_old = set(previous_list['improved_id'])
-    #drugs_new = set(current_list['improved_id'])
 
     drugs_old = set(previous_list['curie'])
     drugs_new = set(current_list['curie'])
