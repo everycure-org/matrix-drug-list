@@ -1,14 +1,5 @@
-# matrix-drug-list
+# DEPRECATED Matrix Drug List
 
-## Triggering a release
+The MATRIX drug list pipelines have moved to https://github.com/everycure-org/matrix. Please use https://github.com/everycure-org/matrix/issues for requests.
 
-Create a new tag locally
-
-```bash
-# Replace v1.0.0 with your desired version
-git tag v1.0.0
-```
-
-```
-git push origin v1.0.1
-```
+https://docs.dev.everycure.org/pipeline/data/ec_drug_list/
